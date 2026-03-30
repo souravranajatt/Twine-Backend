@@ -12,9 +12,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "post_like")
+@Table(
+    name = "post_like",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "post_id"})
+)
 public class PostLike {
 
     @Id
@@ -27,12 +31,12 @@ public class PostLike {
     private Long likeId;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
-    private Users userId;
+    @JoinColumn(name = "user_id", nullable = false)
+    private Users user;
 
     @ManyToOne
-    @JoinColumn(name = "post_id")
-    private PostsEntity postId;
+    @JoinColumn(name = "post_id", nullable = false)
+    private PostsEntity post;
 
     @Column(name = "create_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -44,7 +48,6 @@ public class PostLike {
         }
     }
 
-
     // Getter & Setter 
 
     public Long getLikeId() {
@@ -55,20 +58,20 @@ public class PostLike {
         this.likeId = likeId;
     }
 
-    public Users getUserId() {
-        return userId;
+    public Users getUser() {
+        return user;
     }
 
-    public void setUserId(Users userId) {
-        this.userId = userId;
+    public void setUser(Users user) {
+        this.user = user;
     }
 
-    public PostsEntity getPostId() {
-        return postId;
+    public PostsEntity getPost() {
+        return post;
     }
 
-    public void setPostId(PostsEntity postId) {
-        this.postId = postId;
+    public void setPost(PostsEntity post) {
+        this.post = post;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -79,6 +82,4 @@ public class PostLike {
         this.createdAt = createdAt;
     }
 
-    
-    
 }
