@@ -156,16 +156,18 @@ public class ProfileService {
             for(PostsEntity post : userRes.getPostsEntity()){
                 PostFetchDTO dto = new PostFetchDTO();
 
-                // User Main Posts 
-                dto.setFetchPostId(String.valueOf(post.getPostId()));
-                dto.setFetchFileName(post.getFileName());
-                dto.setFetchPostLocation(post.getPostLocation());
-                dto.setFetchPostCaption(post.getPostCaption());
-                dto.setFetchTaggedUsers(post.getTaggedUsers()); // assuming it's List<String>
-                dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
-                dto.setFetchUploadAt(post.getUploadAt());
-                dto.setFetchVerified(verifiedTemp);
-                postsList.add(dto);
+                if(post.getPostVisiblity() == true){
+                    // User Main Posts 
+                    dto.setFetchPostId(String.valueOf(post.getPostId()));
+                    dto.setFetchFileName(post.getFileName());
+                    dto.setFetchPostLocation(post.getPostLocation());
+                    dto.setFetchPostCaption(post.getPostCaption());
+                    dto.setFetchTaggedUsers(post.getTaggedUsers()); // assuming it's List<String>
+                    dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
+                    dto.setFetchUploadAt(post.getUploadAt());
+                    dto.setFetchVerified(verifiedTemp);
+                    postsList.add(dto);
+                }
 
                 // Time Post Adding 
                 if(post.getTimelineUser() != null && userRes.getUserData() != null && userRes.getUserData().getTimeUser() != null && userRes.getUserData().getTimeUser().equals(post.getTimelineUser())){

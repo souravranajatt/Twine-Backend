@@ -28,6 +28,9 @@ public class PostsEntity {
 
     @Column(name = "post_caption", length = 250)
     private String postCaption;
+
+    @Column(name = "post_visiblity")
+    private Boolean postVisiblity = true;
     
     @Column(name = "tagged_user")
     @ElementCollection
@@ -118,6 +121,14 @@ public class PostsEntity {
 
     public void setUserLocation(String userLocation) {
         this.userLocation = userLocation;
+    }
+
+    public Boolean getPostVisiblity() {
+        return postVisiblity;
+    }
+
+    public void setPostVisiblity(Boolean postVisiblity) {
+        this.postVisiblity = postVisiblity;
     }
     
 }
