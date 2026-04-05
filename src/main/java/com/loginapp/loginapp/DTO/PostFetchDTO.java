@@ -11,7 +11,8 @@ public class PostFetchDTO {
     private List<String> fetchTaggedUsers;
     private String fetchTimelineUser;
     private LocalDateTime fetchUploadAt;
-    private boolean fetchVerified;
+    private boolean fetchVerified;    
+
 
     // Getter and Setter 
     

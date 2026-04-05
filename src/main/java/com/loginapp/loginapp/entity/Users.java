@@ -34,7 +34,7 @@ public class Users {
     @Column(name = "verify_tag", updatable = true)
     private boolean verifyTag = false;
 
-    @Column(name = "is_Deleted", updatable = true)
+    @Column(name = "is_deleted", updatable = true)
     private boolean statusDeleted = false;
 
     @Column(name = "is_private", updatable = true)

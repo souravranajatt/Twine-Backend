@@ -27,7 +27,7 @@ public class UserData {
     @Column(name = "profile_photo")
     private String profilePhoto;
 
-    @Column(name = "user_bio",length = 101, columnDefinition = "TEXT")
+    @Column(name = "user_bio",length = 101)
     private String userBio;
 
     @Column(name = "user_location")
@@ -49,9 +49,7 @@ public class UserData {
     private LocalDateTime updateAt;
     @PrePersist
     protected void onCreate() {
-        if (this.updateAt == null) {
             this.updateAt = LocalDateTime.now();
-        }
     }
 
     // Getters and Setters 

@@ -5,7 +5,8 @@ import org.hibernate.annotations.GenericGenerator;
 import jakarta.persistence.*;
 import java.util.*;
 
-@Entity(name = "user_post")
+@Entity
+@Table(name = "user_post")
 public class PostsEntity {
     
     @Id
