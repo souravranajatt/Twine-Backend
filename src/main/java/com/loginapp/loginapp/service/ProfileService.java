@@ -8,11 +8,13 @@ import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
 import com.loginapp.loginapp.config.CorsConfig;
+import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
+import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
@@ -36,6 +38,9 @@ public class ProfileService {
 
     @Autowired
     private FollowRequestRepo followRequestRepo;
+
+    @Autowired
+    private PostMediaRepo postMediaRepo;
 
     ProfileService(CorsConfig corsConfig) {
         this.corsConfig = corsConfig;
@@ -166,6 +171,15 @@ public class ProfileService {
                     dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
                     dto.setFetchUploadAt(post.getUploadAt());
                     dto.setFetchVerified(verifiedTemp);
+                    // ✅ Metadata Set
+                    PostMedia media = postMediaRepo.findByPost(post).orElse(null);
+                    if (media != null) {
+                        dto.setWidth(media.getWidth());
+                        dto.setHeight(media.getHeight());
+                        dto.setDuration(media.getDuration());
+                        dto.setPostType(media.getPostType().name());
+                    }
+                    
                     postsList.add(dto);
                 }
 

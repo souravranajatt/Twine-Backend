@@ -40,13 +40,11 @@ public class PostsEntity {
     @Column(name = "timeline_user")
     private Long timelineUser;
 
-    @Column(name = "upload_at", nullable = false, updatable = false)
+    @Column(name = "upload_at", nullable = false)
     private LocalDateTime uploadAt;
     @PrePersist
     protected void onCreate() {
-        if (this.uploadAt == null) {
             this.uploadAt = LocalDateTime.now();
-        }
     }
 
     @ManyToOne

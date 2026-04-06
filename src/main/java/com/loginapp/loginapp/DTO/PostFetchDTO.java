@@ -11,7 +11,18 @@ public class PostFetchDTO {
     private List<String> fetchTaggedUsers;
     private String fetchTimelineUser;
     private LocalDateTime fetchUploadAt;
-    private boolean fetchVerified;    
+
+    // Post Metadata
+    private Integer width;
+    private Integer height;
+    private Integer duration;
+    private String postType;
+
+    // Post User Details
+    private String userId;
+    private String username;
+    private String profileImage;
+    private boolean fetchVerified;
 
 
     // Getter and Setter 
@@ -63,6 +74,48 @@ public class PostFetchDTO {
     }
     public void setFetchVerified(boolean fetchVerified) {
         this.fetchVerified = fetchVerified;
+    }
+    public Integer getWidth() {
+        return width;
+    }
+    public void setWidth(Integer width) {
+        this.width = width;
+    }
+    public Integer getHeight() {
+        return height;
+    }
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
+    public Integer getDuration() {
+        return duration;
+    }
+    public void setDuration(Integer duration) {
+        this.duration = duration;
+    }
+    public String getPostType() {
+        return postType;
+    }
+    public void setPostType(String postType) {
+        this.postType = postType;
+    }
+    public String getUserId() {
+        return userId;
+    }
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getProfileImage() {
+        return profileImage;
+    }
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
     }
     
 }

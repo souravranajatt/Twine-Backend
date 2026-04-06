@@ -1,5 +1,9 @@
 package com.loginapp.loginapp.service;
 
+import org.mp4parser.IsoFile;
+import java.io.ByteArrayInputStream;
+import java.nio.channels.Channels;
+import java.awt.image.BufferedImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -7,13 +11,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.List;
 
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
+import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.Users;
+import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
+
+import net.coobird.thumbnailator.Thumbnails;
 
 @Service
 public class PostService {
@@ -24,11 +35,12 @@ public class PostService {
     @Autowired
     private UsersRepo usersRepo;
 
+    @Autowired
+    private PostMediaRepo postMediaRepo;
+
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
-    private static final long MAX_FILE_SIZE = 500 * 1024 * 1024; // 50MB
+    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
-
-    // Post Upload Logic
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
 
         // 1️⃣ Get logged-in username from JWT
@@ -49,16 +61,34 @@ public class PostService {
         }
 
         String contentType = file.getContentType();
-        if(!contentType.startsWith("image/") && !contentType.startsWith("video/")){
+        if (!contentType.startsWith("image/") && !contentType.startsWith("video/")) {
             throw new IllegalArgumentException("Only images or videos are allowed!");
         }
 
         String original = file.getOriginalFilename().toLowerCase();
-        if (original.endsWith(".exe") || original.endsWith(".apk") || original.endsWith(".sh")) {
+
+        List<String> allowedImages = Arrays.asList(
+            ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".gif", ".bmp"
+        );
+        List<String> allowedVideos = Arrays.asList(
+            ".mp4", ".mov", ".avi", ".mkv", ".webm"
+        );
+
+        boolean isAllowedImage = allowedImages.stream().anyMatch(original::endsWith);
+        boolean isAllowedVideo = allowedVideos.stream().anyMatch(original::endsWith);
+
+        if (!isAllowedImage && !isAllowedVideo) {
             throw new IllegalArgumentException("Invalid file type!");
         }
 
-        if(postUploadRequest.getPostCaption().length() > 250){
+        if (contentType.startsWith("image/") && !isAllowedImage) {
+            throw new IllegalArgumentException("Invalid image format!");
+        }
+        if (contentType.startsWith("video/") && !isAllowedVideo) {
+            throw new IllegalArgumentException("Invalid video format!");
+        }
+
+        if (postUploadRequest.getPostCaption().length() > 250) {
             throw new IllegalArgumentException("Caption size is too long!");
         }
 
@@ -66,25 +96,68 @@ public class PostService {
         File folder = new File(uploadDir);
         if (!folder.exists()) folder.mkdirs();
 
+        // ✅ Pehle bytes lo — ek baar mein sab kaam aayega
+        byte[] fileBytes = file.getBytes();
+
         // 5️⃣ Save post entity
         PostsEntity post = new PostsEntity();
-        post.setUserpost(user); // set user from JWT
+        post.setUserpost(user);
         post.setPostCaption(postUploadRequest.getPostCaption());
         post.setPostLocation(postUploadRequest.getPhotoLocation());
 
-        // Check Timeline add or not safely
-        if(user.getUserData() != null && user.getUserData().getTimeUser() != null 
+        if (user.getUserData() != null && user.getUserData().getTimeUser() != null
         && postUploadRequest.getPostTimelineUser() == 1) {
             post.setTimelineUser(user.getUserData().getTimeUser());
         }
 
-        // Unique filename
+        // ✅ fileBytes se file save karo — transferTo nahi
         String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
         File destFile = new File(folder, filename);
-        file.transferTo(destFile);
+        Files.write(destFile.toPath(), fileBytes);
         post.setFileName(filename);
 
-        postRepo.save(post);
+        PostsEntity postsaved = postRepo.save(post);
+
+        // Post Metadata Store
+        PostMedia postdata = new PostMedia();
+        postdata.setPost(postsaved);
+
+        if (contentType.startsWith("image/")) {
+            try {
+                // ✅ Thumbnailator — HEIC, WEBP, JPG, PNG sab handle karta hai
+                BufferedImage bufferedImage = Thumbnails.of(new ByteArrayInputStream(fileBytes))
+                    .scale(1)
+                    .asBufferedImage();
+                if (bufferedImage != null) {
+                    postdata.setWidth(bufferedImage.getWidth());
+                    postdata.setHeight(bufferedImage.getHeight());
+                }
+            } catch (Exception e) {
+                System.out.println("Image read error: " + e.getMessage());
+            }
+            postdata.setPostType(PostMedia.PostType.IMAGE);
+            postdata.setDuration(null);
+
+        } else if (contentType.startsWith("video/")) {
+                try {
+                    IsoFile isoFile = new IsoFile(
+                        Channels.newChannel(new ByteArrayInputStream(fileBytes))  // ✅
+                    );
+                    double duration = (double) isoFile.getMovieBox()
+                        .getMovieHeaderBox().getDuration() /
+                        isoFile.getMovieBox()
+                        .getMovieHeaderBox().getTimescale();
+                    isoFile.close();
+                    postdata.setDuration((int) duration);
+                } catch (Exception e) {
+                    // duration nahi mila toh null rehne do
+                }
+                postdata.setPostType(PostMedia.PostType.VIDEO);
+                postdata.setWidth(null);
+                postdata.setHeight(null);
+        }
+
+        postMediaRepo.save(postdata);
 
         // 6️⃣ Response
         PostUploadResponse response = new PostUploadResponse();
