@@ -21,6 +21,7 @@ import com.loginapp.loginapp.repository.UsersRepo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProfileService {
@@ -63,6 +64,8 @@ public class ProfileService {
         if (userRes.isStatusDeleted() == true) {
             throw new IllegalArgumentException("User not found");
         }
+
+        // Check searched user blocked the user or not 
 
         // Now return user data after found
         SearchUserResponse response = new SearchUserResponse();
@@ -158,7 +161,14 @@ public class ProfileService {
         List<PostFetchDTO> postsList = new ArrayList<>();
         List<PostFetchDTO> postsTimeline = new ArrayList<>();
         if(userRes.getPostsEntity() != null){
-            for(PostsEntity post : userRes.getPostsEntity()){
+
+            // ✅ Ye add karo — latest first sort
+            List<PostsEntity> sortedPosts = userRes.getPostsEntity()
+                .stream()
+                .sorted((a, b) -> b.getUploadAt().compareTo(a.getUploadAt()))
+                .collect(Collectors.toList());
+
+            for(PostsEntity post : sortedPosts){
                 PostFetchDTO dto = new PostFetchDTO();
 
                 if(post.getPostVisiblity() == true){
@@ -171,6 +181,7 @@ public class ProfileService {
                     dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
                     dto.setFetchUploadAt(post.getUploadAt());
                     dto.setFetchVerified(verifiedTemp);
+
                     // ✅ Metadata Set
                     PostMedia media = postMediaRepo.findByPost(post).orElse(null);
                     if (media != null) {
@@ -179,6 +190,18 @@ public class ProfileService {
                         dto.setDuration(media.getDuration());
                         dto.setPostType(media.getPostType().name());
                     }
+
+                    // Post Dataset
+                    dto.setCommentCount(post.getCommentCount() + "");
+                    dto.setLikeCount(post.getLikeCount() + "");
+                    dto.setSaveCount(post.getSaveCount() + "");
+                    dto.setViewCount(post.getViewCount() + "");
+
+                    // Post Setting 
+                    dto.setCommentEnable(post.getCommentEnabled());
+                    dto.setLikeHide(post.getLikeVisible());
+                    dto.setShareEnable(post.getShareEnabled());
+
                     
                     postsList.add(dto);
                 }

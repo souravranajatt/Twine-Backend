@@ -21,8 +21,22 @@ public class PostFetchDTO {
     // Post User Details
     private String userId;
     private String username;
+    private String fullname;
     private String profileImage;
     private boolean fetchVerified;
+
+    // Post Like and Comment 
+    private String likeCount;
+    private String commentCount;
+    private String viewCount;
+    private String saveCount;
+
+    // Post Setting 
+    private boolean commentEnable;
+    private boolean shareEnable;
+    private boolean likeHide;
+
+
 
 
     // Getter and Setter 
@@ -116,6 +130,54 @@ public class PostFetchDTO {
     }
     public void setProfileImage(String profileImage) {
         this.profileImage = profileImage;
+    }
+    public String getFullname() {
+        return fullname;
+    }
+    public void setFullname(String fullname) {
+        this.fullname = fullname;
+    }
+    public String getLikeCount() {
+        return likeCount;
+    }
+    public void setLikeCount(String likeCount) {
+        this.likeCount = likeCount;
+    }
+    public String getCommentCount() {
+        return commentCount;
+    }
+    public void setCommentCount(String commentCount) {
+        this.commentCount = commentCount;
+    }
+    public String getViewCount() {
+        return viewCount;
+    }
+    public void setViewCount(String viewCount) {
+        this.viewCount = viewCount;
+    }
+    public String getSaveCount() {
+        return saveCount;
+    }
+    public void setSaveCount(String saveCount) {
+        this.saveCount = saveCount;
+    }
+    public boolean isCommentEnable() {
+        return commentEnable;
+    }
+    public void setCommentEnable(boolean commentEnable) {
+        this.commentEnable = commentEnable;
+    }
+    public boolean isShareEnable() {
+        return shareEnable;
+    }
+    public void setShareEnable(boolean shareEnable) {
+        this.shareEnable = shareEnable;
+    }
+    public boolean isLikeHide() {
+        return likeHide;
+    }
+    public void setLikeHide(boolean likeHide) {
+        this.likeHide = likeHide;
     }
     
 }

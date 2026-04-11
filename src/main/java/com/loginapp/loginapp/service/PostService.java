@@ -38,6 +38,9 @@ public class PostService {
     @Autowired
     private PostMediaRepo postMediaRepo;
 
+    @Autowired
+    private PostCategoryDetection postCategoryDetection;
+
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
     private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -158,6 +161,9 @@ public class PostService {
         }
 
         postMediaRepo.save(postdata);
+
+        // Now Call AI Detection 
+        postCategoryDetection.detectAndSaveCategory(postsaved, contentType);
 
         // 6️⃣ Response
         PostUploadResponse response = new PostUploadResponse();
