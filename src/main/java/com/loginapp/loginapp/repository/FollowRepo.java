@@ -1,8 +1,11 @@
 package com.loginapp.loginapp.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.entity.Users;
 
@@ -17,4 +20,7 @@ public interface FollowRepo extends JpaRepository<FollowUser, Long> {
 
     // Count following (only active)
     long countByFollower_UserId(Long userId);
+
+    @Query("SELECT f.following FROM FollowUser f WHERE f.follower = :user")
+    List<Users> findFollowingUsers(Users user);
 }

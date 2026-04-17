@@ -5,10 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.loginapp.loginapp.DTO.PostCategoryDTO;
-import com.loginapp.loginapp.entity.PostCategories;
 import com.loginapp.loginapp.entity.PostsEntity;
-import com.loginapp.loginapp.repository.PostCategoryRepo;
-import com.loginapp.loginapp.repository.PostRepo;
 
 import java.net.URI;
 import java.net.http.HttpClient;
