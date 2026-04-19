@@ -1,13 +1,16 @@
 package com.loginapp.loginapp.controller;
 
+import java.util.*;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
+import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
 import com.loginapp.loginapp.service.ProfileService;
-import org.springframework.web.bind.annotation.GetMapping;
+
 
 
 @RestController
@@ -29,6 +32,20 @@ public class ProfileController {
             return ResponseEntity.status(500).body("Internal server error");
         }
     }
+
+    // Serach User Profile Post Data 
+    @GetMapping("/profile/{username}/post")
+    public ResponseEntity<List<PostFetchDTO>> getUserPost(@PathVariable String username,@RequestParam(defaultValue = "0") int page) {
+        try{
+            List<PostFetchDTO> finalRes = profileService.getSearchUserPosts(username.toLowerCase(), page);
+            return ResponseEntity.ok(finalRes);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Collections.emptyList());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Collections.emptyList());
+        }
+    }
+    
 
     // Logged User Profile Fetch End Point
     @GetMapping("/profile/data/loggeduser")    

@@ -37,10 +37,6 @@ public class SearchUserResponse {
     private Long followingCount;
     private Long postCount;
 
-    // ---------- Posts, Timelines , Tags ------------
-    private List<PostFetchDTO> userPosts;
-    private List<PostFetchDTO> timelinePosts;
-
     // Getter && Setter 
 
     public String getSearchUserId() {
@@ -211,28 +207,12 @@ public class SearchUserResponse {
         this.postCount = postCount;
     }
 
-    public List<PostFetchDTO> getUserPosts() {
-        return userPosts;
-    }
-
-    public void setUserPosts(List<PostFetchDTO> userPosts) {
-        this.userPosts = userPosts;
-    }
-
     public boolean isFollowerStatus() {
         return followerStatus;
     }
     
     public void setFollowerStatus(boolean followerStatus) {
         this.followerStatus = followerStatus;
-    }
-
-    public List<PostFetchDTO> getTimelinePosts() {
-        return timelinePosts;
-    }
-
-    public void setTimelinePosts(List<PostFetchDTO> timelinePosts) {
-        this.timelinePosts = timelinePosts;
     }
     
 

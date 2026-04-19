@@ -1,6 +1,10 @@
 package com.loginapp.loginapp.service;
 
+import org.springframework.data.domain.*;
+import org.springframework.data.domain.Pageable;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +24,7 @@ import com.loginapp.loginapp.repository.UsersRepo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.*;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -157,68 +162,70 @@ public class ProfileService {
         long postCount = postRepo.countByUserpost_UserId(userRes.getUserId());
         response.setPostCount(postCount);
 
-        // Set Posts 
-        List<PostFetchDTO> postsList = new ArrayList<>();
-        List<PostFetchDTO> postsTimeline = new ArrayList<>();
-        if(userRes.getPostsEntity() != null){
-
-            // ✅ Ye add karo — latest first sort
-            List<PostsEntity> sortedPosts = userRes.getPostsEntity()
-                .stream()
-                .sorted((a, b) -> b.getUploadAt().compareTo(a.getUploadAt()))
-                .collect(Collectors.toList());
-
-            for(PostsEntity post : sortedPosts){
-                PostFetchDTO dto = new PostFetchDTO();
-
-                if(post.getPostVisiblity() == true){
-                    // User Main Posts 
-                    dto.setFetchPostId(String.valueOf(post.getPostId()));
-                    dto.setFetchFileName(post.getFileName());
-                    dto.setFetchPostLocation(post.getPostLocation());
-                    dto.setFetchPostCaption(post.getPostCaption());
-                    dto.setFetchTaggedUsers(post.getTaggedUsers()); // assuming it's List<String>
-                    dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
-                    dto.setFetchUploadAt(post.getUploadAt());
-                    dto.setFetchVerified(verifiedTemp);
-
-                    // ✅ Metadata Set
-                    PostMedia media = postMediaRepo.findByPost(post).orElse(null);
-                    if (media != null) {
-                        dto.setWidth(media.getWidth());
-                        dto.setHeight(media.getHeight());
-                        dto.setDuration(media.getDuration());
-                        dto.setPostType(media.getPostType().name());
-                    }
-
-                    // Post Dataset
-                    dto.setCommentCount(post.getCommentCount() + "");
-                    dto.setLikeCount(post.getLikeCount() + "");
-                    dto.setSaveCount(post.getSaveCount() + "");
-                    dto.setViewCount(post.getViewCount() + "");
-
-                    // Post Setting 
-                    dto.setCommentEnable(post.getCommentEnabled());
-                    dto.setLikeHide(post.getLikeVisible());
-                    dto.setShareEnable(post.getShareEnabled());
-
-                    
-                    postsList.add(dto);
-                }
-
-                // Time Post Adding 
-                if(post.getTimelineUser() != null && userRes.getUserData() != null && userRes.getUserData().getTimeUser() != null && userRes.getUserData().getTimeUser().equals(post.getTimelineUser())){
-                    postsTimeline.add(dto);
-                }
-            }
-        }
-
-        response.setUserPosts(postsList);
-        response.setTimelinePosts(postsTimeline);
-
         // Return response 
         return response;
 
+    }
+
+
+    // Set Search User Posts 
+    public List<PostFetchDTO> getSearchUserPosts(String username, int page){
+
+        Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
+
+        Users userRes = usersRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (userRes.isStatusDeleted()) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
+
+        if(userRes.isStatusPrivate() && !isFollowingPvt){
+            return Collections.emptyList();
+        }
+
+        Pageable pageable = PageRequest.of(page, 10);
+
+        List<PostsEntity> posts = postRepo.findUserPosts(userRes, pageable);
+
+        List<PostFetchDTO> postsList = new ArrayList<>();
+
+        for(PostsEntity post : posts){
+
+            PostFetchDTO dto = new PostFetchDTO();
+
+            dto.setFetchPostId(String.valueOf(post.getPostId()));
+            dto.setFetchFileName(post.getFileName());
+            dto.setFetchPostLocation(post.getPostLocation());
+            dto.setFetchPostCaption(post.getPostCaption());
+            dto.setFetchTaggedUsers(post.getTaggedUsers());
+            dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
+            dto.setFetchUploadAt(post.getUploadAt());
+            dto.setFetchVerified(userRes.isVerifyTag());
+
+            PostMedia media = postMediaRepo.findByPost(post).orElse(null);
+            if (media != null) {
+                dto.setWidth(media.getWidth());
+                dto.setHeight(media.getHeight());
+                dto.setDuration(media.getDuration());
+                dto.setPostType(media.getPostType().name());
+            }
+
+            dto.setCommentCount(post.getCommentCount()+"");
+            dto.setLikeCount(post.getLikeCount()+"");
+            dto.setSaveCount(post.getSaveCount()+"");
+            dto.setViewCount(post.getViewCount()+"");
+
+            dto.setCommentEnable(post.getCommentEnabled());
+            dto.setLikeHide(post.getLikeVisible());
+            dto.setShareEnable(post.getShareEnabled());
+
+            postsList.add(dto);
+        }
+
+        return postsList;
     }
 
     // Fetch Logged User Data 
