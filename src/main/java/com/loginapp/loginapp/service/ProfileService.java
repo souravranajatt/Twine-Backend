@@ -22,11 +22,7 @@ import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.*;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class ProfileService {
@@ -189,6 +185,72 @@ public class ProfileService {
         Pageable pageable = PageRequest.of(page, 10);
 
         List<PostsEntity> posts = postRepo.findUserPosts(userRes, pageable);
+
+        List<PostFetchDTO> postsList = new ArrayList<>();
+
+        for(PostsEntity post : posts){
+
+            PostFetchDTO dto = new PostFetchDTO();
+
+            dto.setFetchPostId(String.valueOf(post.getPostId()));
+            dto.setFetchFileName(post.getFileName());
+            dto.setFetchPostLocation(post.getPostLocation());
+            dto.setFetchPostCaption(post.getPostCaption());
+            dto.setFetchTaggedUsers(post.getTaggedUsers());
+            dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
+            dto.setFetchUploadAt(post.getUploadAt());
+            dto.setFetchVerified(userRes.isVerifyTag());
+
+            PostMedia media = postMediaRepo.findByPost(post).orElse(null);
+            if (media != null) {
+                dto.setWidth(media.getWidth());
+                dto.setHeight(media.getHeight());
+                dto.setDuration(media.getDuration());
+                dto.setPostType(media.getPostType().name());
+            }
+
+            dto.setCommentCount(post.getCommentCount()+"");
+            dto.setLikeCount(post.getLikeCount()+"");
+            dto.setSaveCount(post.getSaveCount()+"");
+            dto.setViewCount(post.getViewCount()+"");
+
+            dto.setCommentEnable(post.getCommentEnabled());
+            dto.setLikeHide(post.getLikeVisible());
+            dto.setShareEnable(post.getShareEnabled());
+
+            postsList.add(dto);
+        }
+
+        return postsList;
+    }
+
+    // Search User TimeLine Post 
+    public List<PostFetchDTO> getSearchUserTimelinePosts(String username, int page){
+
+        // Current User
+        Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
+
+        // Search User Found
+        Users userRes = usersRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (userRes.isStatusDeleted()) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
+
+        if(userRes.isStatusPrivate() && !isFollowingPvt){
+            return Collections.emptyList();
+        }
+
+        Pageable pageable = PageRequest.of(page, 10);
+
+        // Get details of Timeline User 
+        Users timelineUser = usersRepo.findByUserId(userRes.getUserData().getTimeUser())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        List<PostsEntity> posts = postRepo.findUserPosts(timelineUser, pageable);
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
