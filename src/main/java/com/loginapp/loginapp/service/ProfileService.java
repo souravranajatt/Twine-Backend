@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.service;
 
-import org.springframework.data.domain.*;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.beans.factory.annotation.Autowired;
