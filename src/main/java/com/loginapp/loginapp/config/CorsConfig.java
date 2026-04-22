@@ -16,7 +16,12 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")  // saare APIs ke liye
-                        .allowedOrigins("http://localhost:3000")  // React app ka URL
+                        .allowedOrigins(
+                                "http://localhost:3000",
+                                "http://twine-frontend",
+                                "http://twine-frontend:80",
+                                "http://127.0.0.1:3000"
+                        )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);

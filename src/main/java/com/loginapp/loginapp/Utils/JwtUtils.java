@@ -3,16 +3,20 @@ package com.loginapp.loginapp.Utils;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import java.util.Date;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.security.Key;
 
 @Component
 public class JwtUtils {
 
-    // keep your secret here (in production move to env/secret manager)
-    private final String jwtSecretKey = "x6f3u9knfr467fe46gf6ihfr3322zxvbm0899mx283ur8yc47ty3478jbv83hueu";
-    // access token lifetime (ms). You can shorten in production.
-    private final long EXPIRATION_TIME = 7 * 24 * 60 * 60 * 1000; // 7 Days
+    // getting key and expiration time from .env file using value annotation 
+    @Value("${jwt.secret}")
+    private String jwtSecretKey;
+
+    @Value("${jwt.expiration}")
+    private long EXPIRATION_TIME;
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecretKey.getBytes());

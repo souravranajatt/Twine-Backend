@@ -9,9 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
@@ -41,7 +39,9 @@ public class PostService {
     @Autowired
     private PostCategoryDetection postCategoryDetection;
 
-    private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
+    @Autowired
+    private CloudinaryService cloudinaryService;    // ✅ Added
+
     private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
@@ -95,14 +95,10 @@ public class PostService {
             throw new IllegalArgumentException("Caption size is too long!");
         }
 
-        // 4️⃣ Ensure upload folder exists
-        File folder = new File(uploadDir);
-        if (!folder.exists()) folder.mkdirs();
-
-        // ✅ Pehle bytes lo — ek baar mein sab kaam aayega
+        // ✅ File bytes lo
         byte[] fileBytes = file.getBytes();
 
-        // 5️⃣ Save post entity
+        // 4️⃣ Save post entity
         PostsEntity post = new PostsEntity();
         post.setUserpost(user);
         post.setPostCaption(postUploadRequest.getPostCaption());
@@ -113,11 +109,11 @@ public class PostService {
             post.setTimelineUser(user.getUserData().getTimeUser());
         }
 
-        // ✅ fileBytes se file save karo — transferTo nahi
-        String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        File destFile = new File(folder, filename);
-        Files.write(destFile.toPath(), fileBytes);
-        post.setFileName(filename);
+        // ✅ Cloudinary pe upload karo
+        String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + 
+                          file.getOriginalFilename();
+        String fileUrl = cloudinaryService.uploadFile(fileBytes, filename, contentType);
+        post.setFileName(fileUrl);   // ← Cloudinary URL save hoga
 
         PostsEntity postsaved = postRepo.save(post);
 
@@ -127,7 +123,6 @@ public class PostService {
 
         if (contentType.startsWith("image/")) {
             try {
-                // ✅ Thumbnailator — HEIC, WEBP, JPG, PNG sab handle karta hai
                 BufferedImage bufferedImage = Thumbnails.of(new ByteArrayInputStream(fileBytes))
                     .scale(1)
                     .asBufferedImage();
@@ -142,30 +137,30 @@ public class PostService {
             postdata.setDuration(null);
 
         } else if (contentType.startsWith("video/")) {
-                try {
-                    IsoFile isoFile = new IsoFile(
-                        Channels.newChannel(new ByteArrayInputStream(fileBytes))  // ✅
-                    );
-                    double duration = (double) isoFile.getMovieBox()
-                        .getMovieHeaderBox().getDuration() /
-                        isoFile.getMovieBox()
-                        .getMovieHeaderBox().getTimescale();
-                    isoFile.close();
-                    postdata.setDuration((int) duration);
-                } catch (Exception e) {
-                    // duration nahi mila toh null rehne do
-                }
-                postdata.setPostType(PostMedia.PostType.VIDEO);
-                postdata.setWidth(null);
-                postdata.setHeight(null);
+            try {
+                IsoFile isoFile = new IsoFile(
+                    Channels.newChannel(new ByteArrayInputStream(fileBytes))
+                );
+                double duration = (double) isoFile.getMovieBox()
+                    .getMovieHeaderBox().getDuration() /
+                    isoFile.getMovieBox()
+                    .getMovieHeaderBox().getTimescale();
+                isoFile.close();
+                postdata.setDuration((int) duration);
+            } catch (Exception e) {
+                // duration nahi mila toh null rehne do
+            }
+            postdata.setPostType(PostMedia.PostType.VIDEO);
+            postdata.setWidth(null);
+            postdata.setHeight(null);
         }
 
         postMediaRepo.save(postdata);
 
-        // Now Call AI Detection 
+        // AI Detection
         postCategoryDetection.detectAndSaveCategory(postsaved, contentType);
 
-        // 6️⃣ Response
+        // 5️⃣ Response
         PostUploadResponse response = new PostUploadResponse();
         response.setMessage("Post Uploaded!");
         return response;

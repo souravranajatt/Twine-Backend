@@ -33,7 +33,7 @@ public class ProfileController {
         }
     }
 
-    // Serach User Profile Post Data 
+    // Search User Profile Post Data 
     @GetMapping("/profile/{username}/post")
     public ResponseEntity<List<PostFetchDTO>> getUserPost(@PathVariable String username,@RequestParam(defaultValue = "0") int page) {
         try{

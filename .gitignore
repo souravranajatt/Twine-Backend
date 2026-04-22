@@ -32,6 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
+# ENV Files 
+.env
+.env.*
+
 .DS_Store
 uploads/
 *.HEIC

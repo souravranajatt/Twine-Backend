@@ -50,122 +50,99 @@ public class ProfileService {
     // Fetch search profile securely using projection
     public SearchUserResponse userProfile(String username) {
 
-        // 1️⃣ Get logged-in username from JWT
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users userUidRes = usersRepo.findByUserId(userUid)
+        // 1️⃣ Get logged-in user
+        Long userUid = Long.parseLong(
+                SecurityContextHolder.getContext().getAuthentication().getName()
+        );
+
+        Users loggedUser = usersRepo.findByUserId(userUid)
                 .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
-        // Check user is found or not ...
-        Users userRes = usersRepo.findByUsername(username)
+        // 2️⃣ Get searched user
+        Users user = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // Check User is deleted / deactivate or not ...
-        if (userRes.isStatusDeleted() == true) {
+        // 3️⃣ Check deleted user
+        if (user.isStatusDeleted()) {
             throw new IllegalArgumentException("User not found");
         }
 
-        // Check searched user blocked the user or not 
+        // 4️⃣ Prepare response object
+        SearchUserResponse res = new SearchUserResponse();
 
-        // Now return user data after found
-        SearchUserResponse response = new SearchUserResponse();
+        // ================= BASIC USER INFO =================
+        res.setSearchUserId(String.valueOf(user.getUserId()));
+        res.setSearchUsername(user.getUsername());
+        res.setSearchFullname(user.getFullname());
+        res.setSearchVerified(user.isVerifyTag());
+        res.setSearchCreatedAt(user.getCreatedAt());
 
-        // check verify 
-        boolean verifiedTemp = false;
-        if(userRes.isVerifyTag() == true){
-            verifiedTemp = true;
-        }else{
-            verifiedTemp = false;
-        }
+        // ================= USER DATA =================
+        if (user.getUserData() != null) {
+            UserData data = user.getUserData();
 
-        // check private 
-        boolean privateAccTemp = false;
-        if(userRes.isStatusPrivate() == true){
-            privateAccTemp = true;
-        }else{
-            privateAccTemp = false;
-        }
+            res.setSearchProfilePhoto(data.getProfilePhoto());
+            res.setSearchUserBio(data.getUserBio());
+            res.setSearchUserLocation(data.getUserLocation());
+            res.setSearchUserLink(data.getUserlink());
+            res.setSearchBadge(data.getBadge());
+            res.setSearchUserGender(data.getUserGender());
 
-        // User Details..
-        response.setSearchUserId(String.valueOf(userRes.getUserId()));
-        response.setSearchUsername(userRes.getUsername());
-        response.setSearchFullname(userRes.getFullname());
-        response.setSearchVerified(verifiedTemp);
-        response.setSearchCreatedAt(userRes.getCreatedAt());
-
-        // User Data..
-        if(userRes.getUserData() != null){
-            UserData userDataRes = userRes.getUserData();
-            response.setSearchProfilePhoto(userDataRes.getProfilePhoto());
-            response.setSearchUserBio(userDataRes.getUserBio());
-            response.setSearchUserLocation(userDataRes.getUserLocation());
-            response.setSearchUserLink(userDataRes.getUserlink());
-            response.setSearchBadge(userDataRes.getBadge());
-            response.setSearchUserGender(userDataRes.getUserGender());
-
-            Optional<Users> timelineUserData = usersRepo.findByUserId(userDataRes.getTimeUser());
-            if (!timelineUserData.isEmpty()) {
-                response.setSearchUserTimeline(timelineUserData.get().getFullname()); 
+            if (data.getTimeUser() != null) {
+                usersRepo.findByUserId(data.getTimeUser())
+                        .ifPresent(timelineUser ->
+                                res.setSearchUserTimeline(timelineUser.getFullname())
+                        );
             }
         }
 
-        
+        // ================= PRIVATE LOGIC =================
+        boolean isPrivate = user.isStatusPrivate();
+        boolean isFollowing = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, user.getUserId());
 
-        // Public or Private Account Flags 
-        response.setSearchPrivate(privateAccTemp);
-        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
-        if(privateAccTemp == true && isFollowingPvt == true){
-            response.setSearchPrivateShow(true);
-        }else if(privateAccTemp == true && isFollowingPvt == false){
-            response.setSearchPrivateShow(false);
-        }else{
-            response.setSearchPrivateShow(true);
+        res.setSearchPrivate(isPrivate);
+        res.setSearchPrivateShow(!isPrivate || isFollowing);
+
+        // ================= SELF PROFILE =================
+        if (user.getUserId().equals(userUid)) {
+
+            res.setSearchLoggedUser(true);
+            res.setFollowingStatus(false);
+            res.setFollowerStatus(false);
+            res.setFollowReqStatus(false);
+            res.setFollowReqOptStatus(false);
+
+            // self always visible
+            res.setSearchPrivate(false);
+            res.setSearchPrivateShow(true);
+
+        } else {
+
+            res.setSearchLoggedUser(false);
+
+            boolean isFollower = followRepo.existsByFollower_UserIdAndFollowing_UserId(user.getUserId(), userUid);
+            boolean isFollowReqSent = followRequestRepo.existsBySenderIdAndReceiverId(loggedUser, user);
+            boolean isFollowReqReceived = followRequestRepo.existsBySenderIdAndReceiverId(user, loggedUser);
+
+            res.setFollowingStatus(isFollowing);
+            res.setFollowerStatus(isFollower);
+            res.setFollowReqStatus(isFollowReqSent);
+            res.setFollowReqOptStatus(isFollowReqReceived);
         }
 
+        // ================= COUNTS =================
+        res.setFollowersCount(followRepo.countByFollowing_UserId(user.getUserId()));
+        res.setFollowingCount(followRepo.countByFollower_UserId(user.getUserId()));
+        res.setPostCount(postRepo.countByUserpost_UserId(user.getUserId()));
 
-
-
-        // User Flags ...
-        if(userRes.getUserId().equals(userUid)){
-            response.setSearchLoggedUser(true);
-            response.setFollowReqStatus(false);
-            response.setFollowReqOptStatus(false);
-            response.setFollowingStatus(false); // self profile
-            response.setFollowerStatus(false); // self profile
-            response.setSearchPrivate(false); // self
-            response.setSearchPrivateShow(true); // self
-        }else{
-            response.setSearchLoggedUser(false);
-
-            // Precompute all 4 checks in advance (avoids nested ifs)
-            boolean isFollowing = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
-            boolean isFollower = followRepo.existsByFollower_UserIdAndFollowing_UserId(userRes.getUserId(), userUid);
-            boolean isFollowReqSent = followRequestRepo.existsBySenderIdAndReceiverId(userUidRes, userRes);
-            boolean isFollowReqReceived = followRequestRepo.existsBySenderIdAndReceiverId(userRes, userUidRes);
-
-            // Set flags directly
-            response.setFollowingStatus(isFollowing);
-            response.setFollowerStatus(isFollower);
-            response.setFollowReqStatus(isFollowReqSent);
-            response.setFollowReqOptStatus(isFollowReqReceived);
-        }
-
-
-        // Count Follower and Following 
-        response.setFollowersCount(followRepo.countByFollowing_UserId(userRes.getUserId()));
-        response.setFollowingCount(followRepo.countByFollower_UserId(userRes.getUserId()));
-        long postCount = postRepo.countByUserpost_UserId(userRes.getUserId());
-        response.setPostCount(postCount);
-
-        // Return response 
-        return response;
-
+        return res;
     }
 
 
     // Set Search User Posts 
     public List<PostFetchDTO> getSearchUserPosts(String username, int page){
 
+        // Current User
         Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
 
         Users userRes = usersRepo.findByUsername(username)
@@ -177,6 +154,9 @@ public class ProfileService {
 
         boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
 
+        if(userRes.getUserId().equals(userUid)){
+            isFollowingPvt = true; // Allow access to own posts 
+        }
         if(userRes.isStatusPrivate() && !isFollowingPvt){
             return Collections.emptyList();
         }
@@ -205,7 +185,10 @@ public class ProfileService {
                 dto.setWidth(media.getWidth());
                 dto.setHeight(media.getHeight());
                 dto.setDuration(media.getDuration());
-                dto.setPostType(media.getPostType().name());
+
+                if (media.getPostType() != null) {
+                    dto.setPostType(media.getPostType().name());
+                }
             }
 
             dto.setCommentCount(post.getCommentCount()+"");

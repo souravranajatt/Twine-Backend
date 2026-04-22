@@ -33,7 +33,7 @@ public class PostsEntity {
     @Column(name = "post_visiblity")
     private Boolean postVisiblity = true;
     
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "post_tagged_users",
         joinColumns = @JoinColumn(name = "post_id")
