@@ -3,6 +3,8 @@ package com.loginapp.loginapp.repository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.*;
 import com.loginapp.loginapp.entity.Users;
 
@@ -18,4 +20,13 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
             ORDER BY p.uploadAt DESC
             """)
     List<PostsEntity> findUserPosts(Users user, Pageable page);
+
+    @Query("""
+            SELECT p FROM PostsEntity p
+            WHERE p.timelineUser=:userid
+            AND p.userpost.userId = :tuserid
+            AND p.postVisiblity = true
+            ORDER BY p.uploadAt DESC
+            """)
+    List<PostsEntity> findTimelinePosts(@Param("tuserid") Long tuserid, @Param("userid") Long userid, Pageable page);
 }

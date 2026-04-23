@@ -145,9 +145,11 @@ public class ProfileService {
         // Current User
         Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
 
+        // Search User Found
         Users userRes = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        // Check if user is deactivate or deleted 
         if (userRes.isStatusDeleted()) {
             throw new IllegalArgumentException("User not found");
         }
@@ -163,7 +165,7 @@ public class ProfileService {
 
         Pageable pageable = PageRequest.of(page, 10);
 
-        List<PostsEntity> posts = postRepo.findUserPosts(userRes, pageable);
+        List<PostsEntity> posts = postRepo.findTimelinePosts(userRes.getUserId(), userUid, pageable);
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
