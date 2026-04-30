@@ -11,22 +11,31 @@ import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.PostsEntity;
 
 public interface PostRepo extends JpaRepository<PostsEntity, Long> {
-    Long countByUserpost_UserId(Long userId);
+        
+        Long countByUserpost_UserId(Long userId);
 
-    @Query("""
-            SELECT p FROM PostsEntity p
-            WHERE p.userpost=:user
-            AND p.postVisiblity = true
-            ORDER BY p.uploadAt DESC
-            """)
-    List<PostsEntity> findUserPosts(Users user, Pageable page);
+        @Query("""
+                SELECT p FROM PostsEntity p
+                WHERE p.userpost=:user
+                AND p.postVisiblity = true
+                ORDER BY p.uploadAt DESC
+                """)
+        List<PostsEntity> findUserPosts(Users user, Pageable page);
 
-    @Query("""
-            SELECT p FROM PostsEntity p
-            WHERE p.timelineUser=:userid
-            AND p.userpost.userId = :tuserid
-            AND p.postVisiblity = true
-            ORDER BY p.uploadAt DESC
-            """)
-    List<PostsEntity> findTimelinePosts(@Param("tuserid") Long tuserid, @Param("userid") Long userid, Pageable page);
+        @Query("""
+                SELECT p FROM PostsEntity p
+                WHERE p.timelineUser=:userid
+                AND p.userpost.userId = :tuserid
+                AND p.postVisiblity = true
+                ORDER BY p.uploadAt DESC
+                """)
+        List<PostsEntity> findTimelinePosts(@Param("tuserid") Long tuserid, @Param("userid") Long userid, Pageable page);
+
+        @Query("""
+                SELECT p FROM PostsEntity p
+                WHERE :username MEMBER OF p.taggedUsers
+                AND p.postVisiblity = true
+                ORDER BY p.uploadAt DESC
+                """)
+        List<PostsEntity> findTaggedPosts(@Param("username") String username, Pageable page);
 }
