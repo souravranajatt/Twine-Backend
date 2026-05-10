@@ -245,7 +245,7 @@ public class ProfileService {
         Users timelineUser = usersRepo.findByUserId(userRes.getUserData().getTimeUser())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        List<PostsEntity> posts = postRepo.findTimelinePosts(timelineUser.getUserId(), userUid, pageable);
+        List<PostsEntity> posts = postRepo.findTimelinePosts(timelineUser.getUserId(), userRes.getUserId(), pageable);
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
