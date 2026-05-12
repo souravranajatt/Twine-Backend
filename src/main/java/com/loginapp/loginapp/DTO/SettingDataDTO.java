@@ -14,7 +14,7 @@ public class SettingDataDTO {
     private String profileBadge;
 
     // Other Data Fields
-    private boolean isprivateAccount;
+    private boolean privateAccount;
 
     // Getters and Setters
     public String getFullname() {
@@ -90,10 +90,9 @@ public class SettingDataDTO {
     }
 
     public boolean isPrivateAccount() {
-        return isprivateAccount;
-    }
-
-    public void setPrivateAccount(boolean isprivateAccount) {
-        this.isprivateAccount = isprivateAccount;
+        return privateAccount;
+    }   
+    public void setPrivateAccount(boolean privateAccount) {
+        this.privateAccount = privateAccount;
     }
 }

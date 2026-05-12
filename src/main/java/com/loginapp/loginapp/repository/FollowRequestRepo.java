@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.repository;
 
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.loginapp.loginapp.entity.FollowRequestTable;
@@ -10,4 +11,6 @@ public interface FollowRequestRepo extends JpaRepository<FollowRequestTable, Lon
     Optional<FollowRequestTable> findBySenderIdAndReceiverId(Users sender, Users receiver);
 
     Boolean existsBySenderIdAndReceiverId(Users sender, Users receiver);
+
+    List<FollowRequestTable> findByReceiverId(Users receiver);
 }

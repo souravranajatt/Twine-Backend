@@ -19,6 +19,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
         JOIN PostCategories pc ON pc.post = p
         WHERE pc.primaryCategory = :category
         AND p.postVisiblity = true
+        AND p.userpost.statusPrivate = false
         ORDER BY p.uploadAt DESC
     """)
     List<PostsEntity> getPostsByCategory(String category, Pageable pageable);
@@ -36,6 +37,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
     @Query("""
         SELECT p FROM PostsEntity p
         WHERE p.postVisiblity = true
+        AND p.userpost.statusPrivate = false
         ORDER BY (p.likeCount + p.viewCount) DESC
     """)
     List<PostsEntity> getTrendingPosts(Pageable pageable);
@@ -44,6 +46,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
     @Query("""
         SELECT p FROM PostsEntity p
         WHERE p.postVisiblity = true
+        AND p.userpost.statusPrivate = false
         ORDER BY p.uploadAt DESC
     """)
     List<PostsEntity> getRecentPosts(Pageable pageable);

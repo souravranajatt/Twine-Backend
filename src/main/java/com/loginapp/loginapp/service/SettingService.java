@@ -8,7 +8,14 @@ import org.springframework.stereotype.Service;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
+import com.loginapp.loginapp.entity.FollowRequestTable;
+import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.repository.UsersRepo;
+import com.loginapp.loginapp.repository.FollowRequestRepo;
+import com.loginapp.loginapp.repository.FollowRepo;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SettingService {
@@ -18,6 +25,12 @@ public class SettingService {
 
     @Autowired
     private CloudinaryService cloudinaryService;
+
+    @Autowired
+    private FollowRequestRepo followRequestRepo;
+
+    @Autowired
+    private FollowRepo followRepo;
 
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
@@ -146,5 +159,37 @@ public class SettingService {
         usersRepo.save(user);
         return "Profile updated successfully!";
     }
-    
+
+    // Update Privacy Status Service
+    @Transactional
+    public String updatePrivacyPrivateStatus(boolean isPrivate) {
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        user.setStatusPrivate(isPrivate);
+        usersRepo.save(user);
+
+        // If account becomes Public, approve all pending follow requests
+        if (!isPrivate) {
+            List<FollowRequestTable> pendingRequests = followRequestRepo.findByReceiverId(user);
+            
+            if (!pendingRequests.isEmpty()) {
+                List<FollowUser> newFollowers = pendingRequests.stream().map(request -> {
+                    FollowUser follow = new FollowUser();
+                    follow.setFollowing(user);
+                    follow.setFollower(request.getSenderId());
+                    return follow;
+                }).collect(Collectors.toList());
+
+                // Save all new followers and delete requests
+                followRepo.saveAll(newFollowers);
+                followRequestRepo.deleteAll(pendingRequests);
+            }
+        }
+        
+        return "Privacy settings updated successfully!";
+    }
 }

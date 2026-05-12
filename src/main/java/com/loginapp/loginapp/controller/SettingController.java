@@ -45,4 +45,17 @@ public class SettingController {
             return ResponseEntity.status(500).body("Internal server error");
         }
     }
+
+    // Privacy Status Update End Point
+    @PutMapping("/profile/setting/privacy/private/update")
+    public ResponseEntity<?> profilePrivacyPrivateUpdateSetting(@RequestBody Boolean isPrivate){
+        try{
+            String result = settingService.updatePrivacyPrivateStatus(isPrivate);
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
 }

@@ -301,7 +301,7 @@ public class ProfileService {
 
         boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
 
-        // ✅ Self check add kiya
+        //  Self check add kiya
         if(userRes.getUserId().equals(userUid)){
             isFollowingPvt = true;
         }
