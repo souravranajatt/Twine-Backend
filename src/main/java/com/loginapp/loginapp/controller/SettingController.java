@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.service.SettingService;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
+
 
 @RestController
 @RequestMapping("/api")
@@ -17,11 +21,24 @@ public class SettingController {
     private SettingService settingService;
 
     // Logged User Profile Fetch End Point
-    @GetMapping("/profile/data/setting")    
+    @GetMapping("/profile/setting/fetch")    
     public ResponseEntity<?> profileDataSetting(){
         try{
             SettingDataDTO settingDataDTO = settingService.settingProfileData();
             return ResponseEntity.ok(settingDataDTO);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Logged User Profile Update End Point
+    @PutMapping("/profile/setting/update")
+    public ResponseEntity<?> profileDataUpdateSetting(@RequestBody SettingDataDTO updateDataDTO){
+        try{
+            String result = settingService.settingProfileDataUpdate(updateDataDTO);
+            return ResponseEntity.ok(result);
         }catch(IllegalArgumentException err){
             return ResponseEntity.badRequest().body(err.getMessage());
         }catch(Exception e){

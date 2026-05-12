@@ -1,10 +1,13 @@
 package com.loginapp.loginapp.service;
 
+import java.util.regex.Pattern;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.entity.Users;
+import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.repository.UsersRepo;
 
 @Service
@@ -13,7 +16,18 @@ public class SettingService {
     @Autowired
     private UsersRepo usersRepo;
 
-    // Profile Data Setting Service
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
+    // Username regex (only lowercase letters, numbers, underscore)
+    private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
+    private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
+
+    // Email regex
+    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+
+    // Profile Data Fetch Setting Service
     public SettingDataDTO settingProfileData(){
 
         // Get UserId from Security Context JWT Token
@@ -38,6 +52,99 @@ public class SettingService {
             settingDataDTO.setProfileBadge(user.getUserData().getBadge());
         }
         return settingDataDTO;
+    }
+
+    // Profile Data Update Setting Service
+    public String settingProfileDataUpdate(SettingDataDTO updateDataDTO){
+
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+
+        // Update User Data
+        
+        // ====== 1. Null and Empty Checks ======
+        if (updateDataDTO.getUsername() == null || updateDataDTO.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Username is required!");
+        }
+        if (updateDataDTO.getFullname() == null || updateDataDTO.getFullname().trim().isEmpty()) {
+            throw new IllegalArgumentException("Fullname is required!");
+        }
+
+        // ====== 2. Trim and Normalize Data ======
+        String fullnameFinal = updateDataDTO.getFullname().trim();
+        String usernameFinal = updateDataDTO.getUsername().trim().toLowerCase();
+
+        if (fullnameFinal.length() > 30) {
+            throw new IllegalArgumentException("Fullname can't exceed 30 characters!");
+        }
+
+        // ====== 4. Username Validation ======
+        if (usernameFinal.length() > 25) {
+            throw new IllegalArgumentException("Username can't exceed 25 characters!");
+        }
+        if (!USERNAME_PATTERN.matcher(usernameFinal).matches()) {
+            throw new IllegalArgumentException("Username can only contain lowercase letters, digits, '.', and '_' !");
+        }
+        if (!user.getUsername().equals(usernameFinal) && usersRepo.findByUsername(usernameFinal).isPresent()) {
+         throw new IllegalArgumentException("Username already taken!");
+        }
+
+        // Bio Validation
+        if (updateDataDTO.getBio() != null && updateDataDTO.getBio().length() > 101) {
+            throw new IllegalArgumentException("Bio can't exceed 101 characters!");
+        }
+
+
+
+        // ====== Update Users entity ======
+        user.setFullname(fullnameFinal);
+        user.setUsername(usernameFinal);
+
+        // ====== Handle Cloudinary Base64 Photo Upload ======
+        String photoStr = updateDataDTO.getProfilePictureUrl();
+        if (photoStr != null && photoStr.trim().isEmpty()) {
+            updateDataDTO.setProfilePictureUrl(null); // Save as null if removed/empty
+        } else if (photoStr != null && photoStr.startsWith("data:image")) {
+            try {
+                String[] parts = photoStr.split(",");
+                String base64Data = parts.length > 1 ? parts[1] : parts[0];
+                String contentType = parts[0].split(";")[0].split(":")[1];
+                byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Data);
+                String fileName = "TWINE_PID" + user.getUserId() + "_" + System.currentTimeMillis();
+                
+                String newPhotoUrl = cloudinaryService.uploadFile(imageBytes, fileName, contentType);
+                updateDataDTO.setProfilePictureUrl(newPhotoUrl);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Failed to upload profile photo!");
+            }
+        }
+
+        // ====== Update or Create UserData entity ======
+        if(user.getUserData() != null){
+            user.getUserData().setUserBio(updateDataDTO.getBio());
+            user.getUserData().setUserLocation(updateDataDTO.getLocation());
+            user.getUserData().setUserlink(updateDataDTO.getWebsiteLink());
+            user.getUserData().setUserGender(updateDataDTO.getGender());
+            user.getUserData().setProfilePhoto(updateDataDTO.getProfilePictureUrl());
+            user.getUserData().setBadge(updateDataDTO.getProfileBadge());
+        } else {
+            UserData newUserData = new UserData();
+            newUserData.setUsers(user); // Important: Link the users to userdata
+            newUserData.setUserBio(updateDataDTO.getBio());
+            newUserData.setUserLocation(updateDataDTO.getLocation());
+            newUserData.setUserlink(updateDataDTO.getWebsiteLink());
+            newUserData.setUserGender(updateDataDTO.getGender());
+            newUserData.setProfilePhoto(updateDataDTO.getProfilePictureUrl());
+            newUserData.setBadge(updateDataDTO.getProfileBadge());
+            user.setUserData(newUserData); // Important: Set the new UserData on the Users entity
+        }
+
+        // Save Updated User Data
+        usersRepo.save(user);
+        return "Profile updated successfully!";
     }
     
 }

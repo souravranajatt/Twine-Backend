@@ -96,5 +96,4 @@ public class SettingDataDTO {
     public void setPrivateAccount(boolean isprivateAccount) {
         this.isprivateAccount = isprivateAccount;
     }
-
 }
