@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -58,4 +59,19 @@ public class SettingController {
             return ResponseEntity.status(500).body("Internal server error");
         }
     }
+
+    // Account Deactivation End Point
+    @PutMapping("/profile/setting/account/deactivate")
+    public ResponseEntity<?> accountDeactivationSetting(@RequestBody DeactivateRequestDTO deactivateRequestDTO){
+        try{
+            String result = settingService.deactivateAccount(deactivateRequestDTO);
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    
 }

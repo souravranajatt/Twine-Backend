@@ -5,7 +5,10 @@ import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
+import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.FollowRequestTable;
@@ -31,6 +34,9 @@ public class SettingService {
 
     @Autowired
     private FollowRepo followRepo;
+
+    @Autowired
+    private PasswordHashing passwordHashing;
 
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
@@ -192,4 +198,30 @@ public class SettingService {
         
         return "Privacy settings updated successfully!";
     }
+
+    // Account Deactivation Service (Soft Delete)
+    public String deactivateAccount(DeactivateRequestDTO deactivateRequestDTO) {
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        // Verify Password
+        if (deactivateRequestDTO.getPassword() == null || deactivateRequestDTO.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("Password is required for deactivation!");
+        }
+
+        String hashedPassword = passwordHashing.hashPassword(deactivateRequestDTO.getPassword());
+
+        if (!user.getPasswordHash().equals(hashedPassword)) {
+            throw new IllegalArgumentException("Incorrect password!");
+        }
+
+        user.setStatusDeleted(true);
+        usersRepo.save(user);
+        return "Account deactivated successfully!";
+    }
+
+    
 }

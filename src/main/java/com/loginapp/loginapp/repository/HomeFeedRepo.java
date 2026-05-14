@@ -20,15 +20,17 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
         WHERE pc.primaryCategory = :category
         AND p.postVisiblity = true
         AND p.userpost.statusPrivate = false
+        AND p.userpost.statusDeleted = false
         ORDER BY p.uploadAt DESC
     """)
     List<PostsEntity> getPostsByCategory(String category, Pageable pageable);
 
-    // 🔹 Following Feed (FIXED 🔥)
+    // 🔹 Following Feed (FIXED )
     @Query("""
         SELECT p FROM PostsEntity p
         WHERE p.userpost IN :user
         AND p.postVisiblity = true
+        AND p.userpost.statusDeleted = false
         ORDER BY p.uploadAt DESC
     """)
     List<PostsEntity> getFollowingPosts(List<Users> user, Pageable pageable);
@@ -38,6 +40,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
         SELECT p FROM PostsEntity p
         WHERE p.postVisiblity = true
         AND p.userpost.statusPrivate = false
+        AND p.userpost.statusDeleted = false
         ORDER BY (p.likeCount + p.viewCount) DESC
     """)
     List<PostsEntity> getTrendingPosts(Pageable pageable);
@@ -47,6 +50,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
         SELECT p FROM PostsEntity p
         WHERE p.postVisiblity = true
         AND p.userpost.statusPrivate = false
+        AND p.userpost.statusDeleted = false
         ORDER BY p.uploadAt DESC
     """)
     List<PostsEntity> getRecentPosts(Pageable pageable);

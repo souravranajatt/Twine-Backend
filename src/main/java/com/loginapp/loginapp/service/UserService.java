@@ -9,11 +9,10 @@ import com.loginapp.loginapp.DTO.LoginResponse;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
 import com.loginapp.loginapp.Utils.JwtUtils;
+import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.UsersRepo;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -26,6 +25,9 @@ public class UserService {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private PasswordHashing passwordHashing;
+
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
@@ -34,20 +36,6 @@ public class UserService {
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
-    // SHA-256 password hashing
-    private String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hashedBytes = md.digest(password.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hashedBytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Something went wrong!", e);
-        }
-    }
 
     // Signup with validation
     @Transactional
@@ -103,7 +91,7 @@ public class UserService {
             throw new IllegalArgumentException("Password must be at least 8 characters long!");
         }
 
-        String passwordHashFinal = hashPassword(signupRequest.getPassword());
+        String passwordHashFinal = passwordHashing.hashPassword(signupRequest.getPassword());
 
         // Final Store value set 
         Users user = new Users();
@@ -141,11 +129,18 @@ public class UserService {
         }
 
         // hash the given password and compare
-        String hashedPassword = hashPassword(loginRequest.getPassword());
+        String hashedPassword = passwordHashing.hashPassword(loginRequest.getPassword());
         if (userOpt.get().getPasswordHash().equals(hashedPassword)) {
+            Users user = userOpt.get();
+
+            // Auto-reactivate account if it was deactivated
+            if (user.isStatusDeleted()) {
+                user.setStatusDeleted(false);
+                usersRepo.save(user);
+            }
 
             // Generate JWT Token userId + Username
-            String resToken = jwtUtils.generateToken(userOpt.get().getUserId(), userOpt.get().getUsername());
+            String resToken = jwtUtils.generateToken(user.getUserId(), user.getUsername());
             
             LoginResponse resData = new LoginResponse();
             resData.setJwtToken(resToken);
