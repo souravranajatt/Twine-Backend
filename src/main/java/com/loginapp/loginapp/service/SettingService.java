@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.Utils.PasswordHashing;
@@ -221,6 +222,40 @@ public class SettingService {
         user.setStatusDeleted(true);
         usersRepo.save(user);
         return "Account deactivated successfully!";
+    }
+
+
+    // Change Password Service
+    public String changePasswordService(ChangePasswordRequestDTO changePasswordRequestDTO) {
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        // Validate Old Password
+        if (changePasswordRequestDTO.getOldPassword() == null || changePasswordRequestDTO.getOldPassword().isEmpty()) {
+            throw new IllegalArgumentException("Old password is required!");
+        }
+        String hashedOldPassword = passwordHashing.hashPassword(changePasswordRequestDTO.getOldPassword());
+        if (!user.getPasswordHash().equals(hashedOldPassword)) {
+            throw new IllegalArgumentException("Incorrect old password!");
+        }
+
+        // Validate New Password
+        if (changePasswordRequestDTO.getNewPassword() == null || changePasswordRequestDTO.getNewPassword().isEmpty()) {
+            throw new IllegalArgumentException("New password is required!");
+        }
+        if (changePasswordRequestDTO.getNewPassword().length() < 8) {
+            throw new IllegalArgumentException("New password must be at least 8 characters long!");
+        }
+
+        // Update Password
+        String hashedNewPassword = passwordHashing.hashPassword(changePasswordRequestDTO.getNewPassword());
+        user.setPasswordHash(hashedNewPassword);
+        usersRepo.save(user);
+        
+        return "Password changed successfully!";
     }
 
     
