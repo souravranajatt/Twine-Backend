@@ -103,6 +103,7 @@ public class HomeFeedService {
             dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
             dto.setUsername(post.getUserpost().getUsername());
             dto.setFullname(post.getUserpost().getFullname());
+            dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
 
             // ❤️ stats

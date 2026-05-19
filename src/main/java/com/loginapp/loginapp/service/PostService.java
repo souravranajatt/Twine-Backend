@@ -40,9 +40,9 @@ public class PostService {
     private PostCategoryDetection postCategoryDetection;
 
     @Autowired
-    private CloudinaryService cloudinaryService;    // ✅ Added
+    private CloudinaryService cloudinaryService;    
 
-    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+    private static final long MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
 

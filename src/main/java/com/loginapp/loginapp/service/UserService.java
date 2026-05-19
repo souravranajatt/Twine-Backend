@@ -122,15 +122,22 @@ public class UserService {
             return Optional.empty();
         }
 
-        Optional<Users> userOpt = usersRepo.findByUsername(loginRequest.getUsername().toLowerCase());
+        String identifier = loginRequest.getUsername().trim().toLowerCase();
+        Optional<Users> userOpt;
 
-        if (userOpt.isEmpty()) {
-            return Optional.empty(); // username not found
+        // Check if the identifier is an email or username
+        if (identifier.contains("@")) {
+            userOpt = usersRepo.findByEmail(identifier);
+        } else {
+            userOpt = usersRepo.findByUsername(identifier);
         }
 
-        // hash the given password and compare
-        String hashedPassword = passwordHashing.hashPassword(loginRequest.getPassword());
-        if (userOpt.get().getPasswordHash().equals(hashedPassword)) {
+        if (userOpt.isEmpty()) {
+            return Optional.empty(); // user not found
+        }
+
+        // verify the given password using BCrypt matches
+        if (passwordHashing.verifyPassword(loginRequest.getPassword(), userOpt.get().getPasswordHash())) {
             Users user = userOpt.get();
 
             // Auto-reactivate account if it was deactivated

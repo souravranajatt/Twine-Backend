@@ -132,7 +132,11 @@ public class SettingService {
                 String[] parts = photoStr.split(",");
                 String base64Data = parts.length > 1 ? parts[1] : parts[0];
                 String contentType = parts[0].split(";")[0].split(":")[1];
-                byte[] imageBytes = java.util.Base64.getDecoder().decode(base64Data);
+                
+                // Sanitize base64 and use MimeDecoder to handle any whitespaces or newlines robustly
+                String cleanBase64 = base64Data.replaceAll("\\s", "");
+                byte[] imageBytes = java.util.Base64.getMimeDecoder().decode(cleanBase64);
+                
                 String fileName = "TWINE_PID" + user.getUserId() + "_" + System.currentTimeMillis();
                 
                 String newPhotoUrl = cloudinaryService.uploadFile(imageBytes, fileName, contentType);
@@ -213,9 +217,7 @@ public class SettingService {
             throw new IllegalArgumentException("Password is required for deactivation!");
         }
 
-        String hashedPassword = passwordHashing.hashPassword(deactivateRequestDTO.getPassword());
-
-        if (!user.getPasswordHash().equals(hashedPassword)) {
+        if (!passwordHashing.verifyPassword(deactivateRequestDTO.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Incorrect password!");
         }
 
@@ -237,8 +239,7 @@ public class SettingService {
         if (changePasswordRequestDTO.getOldPassword() == null || changePasswordRequestDTO.getOldPassword().isEmpty()) {
             throw new IllegalArgumentException("Old password is required!");
         }
-        String hashedOldPassword = passwordHashing.hashPassword(changePasswordRequestDTO.getOldPassword());
-        if (!user.getPasswordHash().equals(hashedOldPassword)) {
+        if (!passwordHashing.verifyPassword(changePasswordRequestDTO.getOldPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Incorrect old password!");
         }
 
