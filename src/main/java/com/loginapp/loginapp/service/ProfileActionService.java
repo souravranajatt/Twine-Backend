@@ -6,10 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.loginapp.loginapp.DTO.BlockRequestDTO;
 import com.loginapp.loginapp.DTO.FollowRequest;
+import com.loginapp.loginapp.entity.BlockUser;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.entity.Users;
+import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
@@ -25,6 +28,9 @@ public class ProfileActionService {
 
     @Autowired
     private FollowRequestRepo followRequestRepo;
+
+    @Autowired
+    private BlockRepo blockRepo;
 
     // Follow User Logic..
     public void followUserAction(FollowRequest followRequest){
@@ -140,6 +146,49 @@ public class ProfileActionService {
             followRequestRepo.delete(reqOpt.get());
             return;
         }
+    }
+
+    // Block/Unblock User Logic ...
+    public String blockUserAction(BlockRequestDTO blockRequestDTO){
+        
+        // 1️⃣ Get logged-in username from JWT
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);   
+        Users userOne = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        
+        // 2. Target user
+        String searchUidStr = blockRequestDTO.getUserUid();
+        if(searchUidStr == null || searchUidStr.isEmpty()){
+            throw new IllegalArgumentException("Target ID is missing!");
+        }
+        Long searchUid = Long.parseLong(searchUidStr);
+        Users userTwo = usersRepo.findByUserId(searchUid)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        // Check search user id is soft deactivate or not 
+        if(userTwo.isStatusDeleted()){
+            throw new IllegalArgumentException("User is not available!");   
+        }
+        // Check both user same or not
+        if(userOne.getUserId().equals(userTwo.getUserId())){
+            throw new IllegalArgumentException("You can't block yourself!");
+        }
+
+        // Check that user block this account or not
+        boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo);
+        if(isBlocked){
+            // Unblock the account
+            blockRepo.deleteByBlockerAndBlocked(userOne, userTwo);
+            return "Unblocked successfully!";
+        }   
+        // Block the account
+        BlockUser blockUser = new BlockUser();
+        blockUser.setBlocker(userOne);
+        blockUser.setBlocked(userTwo);
+        blockRepo.save(blockUser);
+
+        return "Blocked successfully!";
     }
 
 }
