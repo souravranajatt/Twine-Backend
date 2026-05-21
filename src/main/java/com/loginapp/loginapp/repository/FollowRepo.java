@@ -9,10 +9,11 @@ import org.springframework.data.jpa.repository.Query;
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.entity.Users;
 
+
 public interface FollowRepo extends JpaRepository<FollowUser, Long> {
     Optional<FollowUser> findByFollowerAndFollowing(Users follower, Users following);
 
-    // Returns true if logged user follows searched user AND statusVal = 1
+    // Returns true if logged user follows searched user 
     boolean existsByFollower_UserIdAndFollowing_UserId(Long followerId, Long followingId);
     
     // Count followers (only active)
@@ -23,4 +24,7 @@ public interface FollowRepo extends JpaRepository<FollowUser, Long> {
 
     @Query("SELECT f.following FROM FollowUser f WHERE f.follower = :user")
     List<Users> findFollowingUsers(Users user);
+
+    // Delete follow relationship by user ids
+    void deleteByFollower_UserIdAndFollowing_UserId(Long followerId, Long followingId);
 }

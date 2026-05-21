@@ -15,6 +15,7 @@ import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.Users;
+import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
@@ -43,6 +44,9 @@ public class ProfileService {
     @Autowired
     private PostMediaRepo postMediaRepo;
 
+    @Autowired
+    private BlockRepo blockRepo;
+
     ProfileService(CorsConfig corsConfig) {
         this.corsConfig = corsConfig;
     }
@@ -61,6 +65,13 @@ public class ProfileService {
         // 2️⃣ Get searched user
         Users user = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // Check if user blocked the logged-in user
+        Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(user, loggedUser);
+        if (isBlocked) {
+            throw new IllegalArgumentException("User not found");
+        }
+        
 
         // 3️⃣ Check deleted user
         if (user.isStatusDeleted()) {
@@ -99,9 +110,11 @@ public class ProfileService {
         // ================= PRIVATE LOGIC =================
         boolean isPrivate = user.isStatusPrivate();
         boolean isFollowing = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, user.getUserId());
+        boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, user);
 
         res.setSearchPrivate(isPrivate);
-        res.setSearchPrivateShow(!isPrivate || isFollowing);
+        res.setSearchPrivateShow((!isPrivate || isFollowing) && !isBlockedByLoggedUser);
+        res.setBlockedStatus(isBlockedByLoggedUser);
 
         // ================= SELF PROFILE =================
         if (user.getUserId().equals(userUid)) {
@@ -144,10 +157,18 @@ public class ProfileService {
 
         // Current User
         Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
+        Users loggedUser = usersRepo.findByUserId(userUid)
+                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
         // Search User Found
         Users userRes = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // Check if user blocked the logged-in user
+        Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userRes, loggedUser);
+        if (isBlocked) {
+            throw new IllegalArgumentException("User not found");
+        }
 
         // Check if user is deactivate or deleted 
         if (userRes.isStatusDeleted()) {
@@ -161,7 +182,8 @@ public class ProfileService {
             isFollowingPvt = true;
         }
 
-        if(userRes.isStatusPrivate() && !isFollowingPvt){
+        boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, userRes);
+        if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
             return Collections.emptyList();
         }
 
@@ -215,12 +237,20 @@ public class ProfileService {
 
         // Current User
         Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
+        Users loggedUser = usersRepo.findByUserId(userUid)
+                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
         // Search User Found
         Users userRes = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (userRes.isStatusDeleted()) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        // Check if user blocked the logged-in user
+        Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userRes, loggedUser);
+        if (isBlocked) {
             throw new IllegalArgumentException("User not found");
         }
 
@@ -231,7 +261,8 @@ public class ProfileService {
             isFollowingPvt = true;
         }
 
-        if(userRes.isStatusPrivate() && !isFollowingPvt){
+        boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, userRes);
+        if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
             return Collections.emptyList();
         }
 
@@ -290,12 +321,20 @@ public class ProfileService {
 
         // Current User
         Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
+        Users loggedUser = usersRepo.findByUserId(userUid)
+                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
         // Search User Found
         Users userRes = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (userRes.isStatusDeleted()) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        // Check if user blocked the logged-in user
+        Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userRes, loggedUser);
+        if (isBlocked) {
             throw new IllegalArgumentException("User not found");
         }
 
@@ -306,7 +345,8 @@ public class ProfileService {
             isFollowingPvt = true;
         }
 
-        if(userRes.isStatusPrivate() && !isFollowingPvt){
+        boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, userRes);
+        if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
             return Collections.emptyList();
         }
 

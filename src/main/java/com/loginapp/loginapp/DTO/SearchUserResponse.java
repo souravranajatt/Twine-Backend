@@ -31,6 +31,7 @@ public class SearchUserResponse {
     private boolean followerStatus;
     private boolean followReqStatus;
     private boolean followReqOptStatus;
+    private boolean blockedStatus;
 
     // ---------- Counts ----------
     private Long followersCount;
@@ -215,5 +216,11 @@ public class SearchUserResponse {
         this.followerStatus = followerStatus;
     }
     
+    public boolean isBlockedStatus() {
+        return blockedStatus;
+    }
 
+    public void setBlockedStatus(boolean blockedStatus) {
+        this.blockedStatus = blockedStatus;
+    }
 }

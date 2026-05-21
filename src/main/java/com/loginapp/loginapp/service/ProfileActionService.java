@@ -1,8 +1,10 @@
 package com.loginapp.loginapp.service;
 
+import java.beans.Transient;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Block;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class ProfileActionService {
@@ -58,6 +62,13 @@ public class ProfileActionService {
         // Check both user same or not 
         if(userOne.getUserId().equals(userTwo.getUserId())){
             throw new IllegalArgumentException("You can't follow yourself!");
+        }
+
+        // Check if user has blocked the other user
+        boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo)
+                        || blockRepo.existsByBlockerAndBlocked(userTwo, userOne);
+        if(isBlocked){
+            throw new IllegalArgumentException("Action not allowed! User is blocked.");
         }
 
         // Check that user follow this account or not
@@ -149,6 +160,7 @@ public class ProfileActionService {
     }
 
     // Block/Unblock User Logic ...
+    @Transactional
     public String blockUserAction(BlockRequestDTO blockRequestDTO){
         
         // 1️⃣ Get logged-in username from JWT
@@ -179,7 +191,8 @@ public class ProfileActionService {
         boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo);
         if(isBlocked){
             // Unblock the account
-            blockRepo.deleteByBlockerAndBlocked(userOne, userTwo);
+            BlockUser blockUser = blockRepo.findByBlockerAndBlocked(userOne, userTwo);
+            blockRepo.delete(blockUser);
             return "Unblocked successfully!";
         }   
         // Block the account
@@ -187,6 +200,13 @@ public class ProfileActionService {
         blockUser.setBlocker(userOne);
         blockUser.setBlocked(userTwo);
         blockRepo.save(blockUser);
+
+        // Delete Follow relationship if exists
+
+        followRepo.deleteByFollower_UserIdAndFollowing_UserId(userOne.getUserId(), userTwo.getUserId());
+        followRepo.deleteByFollower_UserIdAndFollowing_UserId(userTwo.getUserId(), userOne.getUserId());
+        followRequestRepo.deleteBySenderIdAndReceiverId(userOne, userTwo);
+        followRequestRepo.deleteBySenderIdAndReceiverId(userTwo, userOne);
 
         return "Blocked successfully!";
     }
