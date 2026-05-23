@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.controller;
 
-import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,7 +10,7 @@ import com.loginapp.loginapp.DTO.BlockRequestDTO;
 import com.loginapp.loginapp.DTO.FollowRequest;
 import com.loginapp.loginapp.service.ProfileActionService;
 
-import org.springframework.web.bind.annotation.PathVariable;
+
 import org.springframework.web.bind.annotation.PostMapping;
 
 
@@ -36,13 +35,26 @@ public class ProfileActionController {
         }
     }
 
-    // Block/Unblock User Endpoint
+    // Block User Endpoint
     @PostMapping("/user/block")
     public ResponseEntity<?> blockUserAction(@RequestBody BlockRequestDTO blockRequestDTO) {
         try {
             String result = profileActionService.blockUserAction(blockRequestDTO);
             return ResponseEntity.ok(result);
         }catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Unblock User Endpoint
+    @PostMapping("/user/unblock")
+    public ResponseEntity<?> unblockUserAction(@RequestBody BlockRequestDTO blockRequestDTO) {
+        try {
+            String result = profileActionService.unblockUserAction(blockRequestDTO);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Internal server error");

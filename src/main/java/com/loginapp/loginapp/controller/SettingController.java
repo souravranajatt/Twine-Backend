@@ -1,17 +1,22 @@
 package com.loginapp.loginapp.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 
 @RestController
@@ -85,6 +90,20 @@ public class SettingController {
             return ResponseEntity.status(500).body("Internal server error");
         }
     }
+
+    // Block User End Point
+    @GetMapping("/setting/block/list/fetch")
+    public ResponseEntity<?> getMethodName() {
+        try{
+            List<BlockedUserFetchDTO> blockedUsers = settingService.fetchBlockedUsersList();
+            return ResponseEntity.ok(blockedUsers);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+    
 
     
 }

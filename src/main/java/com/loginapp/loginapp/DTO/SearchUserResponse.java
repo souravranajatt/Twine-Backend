@@ -1,7 +1,6 @@
 package com.loginapp.loginapp.DTO;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public class SearchUserResponse {
 

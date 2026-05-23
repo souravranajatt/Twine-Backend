@@ -1,10 +1,8 @@
 package com.loginapp.loginapp.service;
 
-import java.beans.Transient;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Block;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -159,7 +157,7 @@ public class ProfileActionService {
         }
     }
 
-    // Block/Unblock User Logic ...
+    // Block User Logic ...
     @Transactional
     public String blockUserAction(BlockRequestDTO blockRequestDTO){
         
@@ -182,7 +180,7 @@ public class ProfileActionService {
         if(userTwo.isStatusDeleted()){
             throw new IllegalArgumentException("User is not available!");   
         }
-        // Check both user same or not
+        // Check both user are same or not
         if(userOne.getUserId().equals(userTwo.getUserId())){
             throw new IllegalArgumentException("You can't block yourself!");
         }
@@ -190,10 +188,7 @@ public class ProfileActionService {
         // Check that user block this account or not
         boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo);
         if(isBlocked){
-            // Unblock the account
-            BlockUser blockUser = blockRepo.findByBlockerAndBlocked(userOne, userTwo);
-            blockRepo.delete(blockUser);
-            return "Unblocked successfully!";
+            throw new IllegalArgumentException("User is already blocked!");
         }   
         // Block the account
         BlockUser blockUser = new BlockUser();
@@ -209,6 +204,45 @@ public class ProfileActionService {
         followRequestRepo.deleteBySenderIdAndReceiverId(userTwo, userOne);
 
         return "Blocked successfully!";
+    }
+
+    // Unblock User Logic ...
+    @Transactional
+    public String unblockUserAction(BlockRequestDTO blockRequestDTO){
+        // 1️⃣ Get logged-in username from JWT
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);   
+        Users userOne = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        
+        // 2. Target user
+        String searchUidStr = blockRequestDTO.getUserUid();
+        if(searchUidStr == null || searchUidStr.isEmpty()){
+            throw new IllegalArgumentException("Target ID is missing!");
+        }
+        Long searchUid = Long.parseLong(searchUidStr);
+        Users userTwo = usersRepo.findByUserId(searchUid)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        // Check search user id is soft deactivate or not 
+        if(userTwo.isStatusDeleted()){
+            throw new IllegalArgumentException("User is not available!");   
+        }
+        // Check both user same or not
+        if(userOne.getUserId().equals(userTwo.getUserId())){
+            throw new IllegalArgumentException("You can't unblock yourself!");
+        }
+
+        // Check that user block this account or not
+        boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo);
+        if(!isBlocked){
+            throw new IllegalArgumentException("User is not blocked!");
+        }
+        
+        // 4. Unblock
+        blockRepo.deleteByBlockerAndBlocked(userOne, userTwo);
+        
+        return "Unblocked successfully!";
     }
 
 }

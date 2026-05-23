@@ -1,6 +1,10 @@
 package com.loginapp.loginapp.repository;
 
+import java.util.*;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.loginapp.loginapp.entity.BlockUser;
 import com.loginapp.loginapp.entity.Users;
@@ -15,4 +19,8 @@ public interface BlockRepo extends JpaRepository<BlockUser, Long> {
 
     // Custom query to delete a block relationship between two users
     void deleteByBlockerAndBlocked(Users blocker, Users blocked);
+
+    // Find all blocked user by current user
+    @Query("SELECT b FROM BlockUser b WHERE b.blocker = :blocker")
+    List<BlockUser> findByBlocker(@Param("blocker") Users blocker);
 }

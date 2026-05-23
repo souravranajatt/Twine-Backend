@@ -6,17 +6,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
+import com.loginapp.loginapp.entity.BlockUser;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.repository.UsersRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
+import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +43,9 @@ public class SettingService {
 
     @Autowired
     private PasswordHashing passwordHashing;
+
+    @Autowired
+    private BlockRepo blockRepo;
 
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
@@ -259,5 +267,34 @@ public class SettingService {
         return "Password changed successfully!";
     }
 
+    // Fetching Blocked Users List Service
+    @Transactional
+    public List<BlockedUserFetchDTO> fetchBlockedUsersList() {
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+        
+        // Create Blocked Users List
+        List<BlockedUserFetchDTO> blockedUsers = new ArrayList<>();
+
+        // Get All Blocked User List where current user is the blocker
+        List<BlockUser> blockedList = blockRepo.findByBlocker(user);
+
+        for (BlockUser block : blockedList) {
+            Users blockedUser = block.getBlocked();
+            BlockedUserFetchDTO dto = new BlockedUserFetchDTO();
+            dto.setUsername(blockedUser.getUsername());
+            dto.setUserId(blockedUser.getUserId().toString());
+            if (blockedUser.getUserData() != null) {
+                dto.setProfilePicture(blockedUser.getUserData().getProfilePhoto());
+            }
+            blockedUsers.add(dto);
+        }
+
+        return blockedUsers;
+            
+    }
     
 }
