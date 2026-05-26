@@ -12,12 +12,19 @@ import com.loginapp.loginapp.entity.PostsEntity;
 
 public interface PostRepo extends JpaRepository<PostsEntity, Long> {
         
-        Long countByUserpost_UserId(Long userId);
+        @Query("""
+                SELECT COUNT(p) FROM PostsEntity p
+                WHERE p.userpost.userId = :userId
+                AND p.postVisiblity = true
+                AND p.userpost.statusDeleted = false
+        """)
+        Long countByUserpost_UserId(@Param("userId") Long userId);
 
         @Query("""
                 SELECT p FROM PostsEntity p
                 WHERE p.userpost=:user
                 AND p.postVisiblity = true
+                And p.userpost.statusDeleted = false
                 ORDER BY p.uploadAt DESC
                 """)
         List<PostsEntity> findUserPosts(Users user, Pageable page);
@@ -37,6 +44,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 WHERE :username MEMBER OF p.taggedUsers
                 AND p.postVisiblity = true
                 AND p.userpost.statusDeleted = false
+                AND p.userpost.statusPrivate = false
                 ORDER BY p.uploadAt DESC
                 """)
         List<PostsEntity> findTaggedPosts(@Param("username") String username, Pageable page);

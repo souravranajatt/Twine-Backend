@@ -20,7 +20,11 @@ import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
+import com.loginapp.loginapp.repository.SecretCrushRepo;
+import com.loginapp.loginapp.repository.SecretCrushRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
+
+import jakarta.transaction.Transactional;
 
 import java.util.*;
 
@@ -47,11 +51,18 @@ public class ProfileService {
     @Autowired
     private BlockRepo blockRepo;
 
+    @Autowired
+    private SecretCrushRepo secretCrushRepo;
+
+    @Autowired
+    private SecretCrushRequestRepo secretCrushRequestRepo;
+
     ProfileService(CorsConfig corsConfig) {
         this.corsConfig = corsConfig;
     }
 
     // Fetch search profile securely using projection
+    @Transactional
     public SearchUserResponse userProfile(String username) {
 
         // 1️⃣ Get logged-in user
@@ -62,23 +73,25 @@ public class ProfileService {
         Users loggedUser = usersRepo.findByUserId(userUid)
                 .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
+        if(loggedUser.isStatusDeleted()){
+            throw new IllegalArgumentException("Something went wrong!");
+        }
+
         // 2️⃣ Get searched user
         Users user = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // Check if user blocked the logged-in user
-        Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(user, loggedUser);
-        if (isBlocked) {
-            throw new IllegalArgumentException("User not found");
-        }
-        
-
-        // 3️⃣ Check deleted user
+        // Check deleted
         if (user.isStatusDeleted()) {
             throw new IllegalArgumentException("User not found");
         }
 
-        // 4️⃣ Prepare response object
+        // Check if searched user blocked logged-in user
+        if (blockRepo.existsByBlockerAndBlocked(user, loggedUser)) {
+            throw new IllegalArgumentException("User not found");
+        }
+
+        // 3️⃣ Prepare response
         SearchUserResponse res = new SearchUserResponse();
 
         // ================= BASIC USER INFO =================
@@ -91,7 +104,6 @@ public class ProfileService {
         // ================= USER DATA =================
         if (user.getUserData() != null) {
             UserData data = user.getUserData();
-
             res.setSearchProfilePhoto(data.getProfilePhoto());
             res.setSearchUserBio(data.getUserBio());
             res.setSearchUserLocation(data.getUserLocation());
@@ -100,14 +112,15 @@ public class ProfileService {
             res.setSearchUserGender(data.getUserGender());
 
             if (data.getTimeUser() != null) {
-                usersRepo.findByUserId(data.getTimeUser())
-                        .ifPresent(timelineUser ->
-                                res.setSearchUserTimeline(timelineUser.getFullname())
-                        );
+                usersRepo.findByUserId(data.getTimeUser()).ifPresent(timelineUser -> {
+                    if (!timelineUser.isStatusDeleted()) {
+                        res.setSearchUserTimeline(timelineUser.getFullname());
+                    }
+                });
             }
         }
 
-        // ================= PRIVATE LOGIC =================
+        // ================= PRIVATE / BLOCK LOGIC =================
         boolean isPrivate = user.isStatusPrivate();
         boolean isFollowing = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, user.getUserId());
         boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, user);
@@ -116,31 +129,30 @@ public class ProfileService {
         res.setSearchPrivateShow((!isPrivate || isFollowing) && !isBlockedByLoggedUser);
         res.setBlockedStatus(isBlockedByLoggedUser);
 
-        // ================= SELF PROFILE =================
-        if (user.getUserId().equals(userUid)) {
+        // ================= SELF vs OTHER =================
+        boolean isSelf = user.getUserId().equals(userUid);
+        res.setSearchLoggedUser(isSelf);
 
-            res.setSearchLoggedUser(true);
+        if (isSelf) {
+            res.setSearchPrivate(false);
+            res.setSearchPrivateShow(true);
             res.setFollowingStatus(false);
             res.setFollowerStatus(false);
             res.setFollowReqStatus(false);
             res.setFollowReqOptStatus(false);
-
-            // self always visible
-            res.setSearchPrivate(false);
-            res.setSearchPrivateShow(true);
-
+            res.setCrushStatus(false);
+            res.setCrushSentStatus(false);
         } else {
-
-            res.setSearchLoggedUser(false);
-
-            boolean isFollower = followRepo.existsByFollower_UserIdAndFollowing_UserId(user.getUserId(), userUid);
-            boolean isFollowReqSent = followRequestRepo.existsBySenderIdAndReceiverId(loggedUser, user);
-            boolean isFollowReqReceived = followRequestRepo.existsBySenderIdAndReceiverId(user, loggedUser);
-
             res.setFollowingStatus(isFollowing);
-            res.setFollowerStatus(isFollower);
-            res.setFollowReqStatus(isFollowReqSent);
-            res.setFollowReqOptStatus(isFollowReqReceived);
+            res.setFollowerStatus(followRepo.existsByFollower_UserIdAndFollowing_UserId(user.getUserId(), userUid));
+            res.setFollowReqStatus(followRequestRepo.existsBySenderIdAndReceiverId(loggedUser, user));
+            res.setFollowReqOptStatus(followRequestRepo.existsBySenderIdAndReceiverId(user, loggedUser));
+
+            // ================= CRUSH STATUS =================
+            boolean isCrushMatched = secretCrushRepo.existsByUserOneAndUserTwo(loggedUser, user)
+                                || secretCrushRepo.existsByUserOneAndUserTwo(user, loggedUser);
+            res.setCrushStatus(isCrushMatched);
+            res.setCrushSentStatus(secretCrushRequestRepo.existsBySenderIdAndAnonymousId(loggedUser, user));
         }
 
         // ================= COUNTS =================
@@ -177,7 +189,7 @@ public class ProfileService {
 
         boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
 
-        // ✅ Self check
+        // Self check
         if(userRes.getUserId().equals(userUid)){
             isFollowingPvt = true;
         }
@@ -248,6 +260,10 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
+        if(userRes.getUserData() == null || userRes.getUserData().getTimeUser() == null){
+            return Collections.emptyList();
+        }
+
         // Check if user blocked the logged-in user
         Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userRes, loggedUser);
         if (isBlocked) {
@@ -266,16 +282,20 @@ public class ProfileService {
             return Collections.emptyList();
         }
 
-        // ✅ Null check add kiya
-        if(userRes.getUserData() == null || userRes.getUserData().getTimeUser() == null){
-            return Collections.emptyList();
-        }
-
-        Pageable pageable = PageRequest.of(page, 10);
-
+        // Handle Timeline User with Logged User 
         Users timelineUser = usersRepo.findByUserId(userRes.getUserData().getTimeUser())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        if (timelineUser.isStatusDeleted()) {
+            return Collections.emptyList();
+        }
+
+        Boolean isTimelineBlocked = blockRepo.existsByBlockerAndBlocked(timelineUser, loggedUser);
+        Boolean isLoggedBlockedTimeline = blockRepo.existsByBlockerAndBlocked(loggedUser, timelineUser);
+        if(isTimelineBlocked || isLoggedBlockedTimeline) return Collections.emptyList();
+
+        Pageable pageable = PageRequest.of(page, 10);
+        
         List<PostsEntity> posts = postRepo.findTimelinePosts(timelineUser.getUserId(), userRes.getUserId(), pageable);
 
         List<PostFetchDTO> postsList = new ArrayList<>();

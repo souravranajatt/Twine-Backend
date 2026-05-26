@@ -31,6 +31,10 @@ public class SearchUserResponse {
     private boolean followReqStatus;
     private boolean followReqOptStatus;
     private boolean blockedStatus;
+    
+    // Crush related flags
+    private boolean crushStatus;
+    private boolean crushSentStatus;
 
     // ---------- Counts ----------
     private Long followersCount;
@@ -222,4 +226,23 @@ public class SearchUserResponse {
     public void setBlockedStatus(boolean blockedStatus) {
         this.blockedStatus = blockedStatus;
     }
+
+    public boolean isCrushStatus() {
+        return crushStatus;
+    }
+
+    public void setCrushStatus(boolean crushStatus) {
+        this.crushStatus = crushStatus;
+    }
+
+    public boolean isCrushSentStatus() {
+        return crushSentStatus;
+    }
+
+    public void setCrushSentStatus(boolean crushSentStatus) {
+        this.crushSentStatus = crushSentStatus;
+    }
+
+    
+
 }

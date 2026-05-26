@@ -1,25 +1,27 @@
 package com.loginapp.loginapp.service;
 
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
-import com.loginapp.loginapp.DTO.BlockRequestDTO;
-import com.loginapp.loginapp.DTO.FollowRequest;
 import com.loginapp.loginapp.entity.BlockUser;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
+import com.loginapp.loginapp.entity.SecretCrushRelation;
+import com.loginapp.loginapp.entity.SecretCrushRequest;
+import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
+import com.loginapp.loginapp.repository.SecretCrushRepo;
+import com.loginapp.loginapp.repository.SecretCrushRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
 import jakarta.transaction.Transactional;
 
 @Service
+@Transactional
 public class ProfileActionService {
      
     @Autowired
@@ -34,132 +36,113 @@ public class ProfileActionService {
     @Autowired
     private BlockRepo blockRepo;
 
-    // Follow User Logic..
-    public void followUserAction(FollowRequest followRequest){
+    @Autowired
+    private SecretCrushRepo secretCrushRepo;
 
-        // 1️⃣ Get logged-in username from JWT
+    @Autowired
+    private SecretCrushRequestRepo secretCrushRequestRepo;
+
+    // 1. Follow User Logic..
+    public void followUser(Long targetUserId) {
+
         String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userUid = Long.parseLong(userIdStr);
         Users userOne = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+                            .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
-        // 2. Target user
-        String searchUidStr = followRequest.getUserUid();
-        if(searchUidStr == null || searchUidStr.isEmpty()){
-            throw new IllegalArgumentException("Target ID is missing!");
-        }
-        Long searchUid = Long.parseLong(searchUidStr);
-        Users userTwo = usersRepo.findByUserId(searchUid)
+        Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
-        // Check search user id is soft deactivate or not 
-        if(userTwo.isStatusDeleted() == true){
+        if (userTwo.isStatusDeleted())
             throw new IllegalArgumentException("User is not available!");
-        }
-        
-        // Check both user same or not 
-        if(userOne.getUserId().equals(userTwo.getUserId())){
-            throw new IllegalArgumentException("You can't follow yourself!");
-        }
 
-        // Check if user has blocked the other user
+        if (userOne.getUserId().equals(userTwo.getUserId()))
+            throw new IllegalArgumentException("You can't follow yourself!");
+
         boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo)
                         || blockRepo.existsByBlockerAndBlocked(userTwo, userOne);
-        if(isBlocked){
+        if (isBlocked)
             throw new IllegalArgumentException("Action not allowed! User is blocked.");
-        }
 
-        // Check that user follow this account or not
-        Optional<FollowUser> followOpt = followRepo.findByFollowerAndFollowing(userOne, userTwo);
-        if(followOpt.isPresent()){
-            // Unfollow the account
-            followRepo.delete(followOpt.get());
+        // Already following check
+        boolean alreadyFollowing = followRepo.existsByFollowerAndFollowing(userOne, userTwo);
+        if (alreadyFollowing)
+            throw new IllegalArgumentException("Already following!");
+
+        // Private account — send request
+        if (userTwo.isStatusPrivate()) {
+            boolean alreadyRequested = followRequestRepo.existsBySenderIdAndReceiverId(userOne, userTwo);
+            if (alreadyRequested)
+                throw new IllegalArgumentException("Request already sent!");
+
+            FollowRequestTable req = new FollowRequestTable();
+            req.setSenderId(userOne);
+            req.setReceiverId(userTwo);
+            followRequestRepo.save(req);
             return;
         }
 
-        // check if account private or not 
-        if(userTwo.isStatusPrivate() == true){
-          // Send a request 
-          Optional<FollowRequestTable> reqOpt = followRequestRepo.findBySenderIdAndReceiverId(userOne, userTwo);
-            if (reqOpt.isPresent()) {
-                followRequestRepo.delete(reqOpt.get());  // Cancel request
-            } else {
-                FollowRequestTable req = new FollowRequestTable();
-                req.setSenderId(userOne);
-                req.setReceiverId(userTwo);
-                followRequestRepo.save(req);  // Send request
-            }
-            return;
-        }
-
-        FollowUser respFollowUser = new FollowUser();
-        respFollowUser.setFollower(userOne);
-        respFollowUser.setFollowing(userTwo);
-        followRepo.save(respFollowUser);
+        // Public account — direct follow
+        FollowUser follow = new FollowUser();
+        follow.setFollower(userOne);
+        follow.setFollowing(userTwo);
+        followRepo.save(follow);
     }
 
 
-    // Follow Request Handle Logic ...
-    public void followRequestHanle(FollowRequest followRequest){
+    // 2. Unfollow User Logic..
+    public void unfollowUser(Long targetUserId) {
 
-        // 1️⃣ Get logged-in username from JWT
         String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userUid = Long.parseLong(userIdStr);
         Users userOne = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+                            .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
 
-        // 2. Target user
-        String searchUidStr = followRequest.getUserUid();
-        if(searchUidStr == null || searchUidStr.isEmpty()){
-            throw new IllegalArgumentException("Target ID is missing!");
-        }
-        Long searchUid = Long.parseLong(searchUidStr);
-        Users userTwo = usersRepo.findByUserId(searchUid)
+        Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
-        // Check search user id is soft deactivate or not 
-        if(userTwo.isStatusDeleted() == true){
+        if (userTwo.isStatusDeleted())
             throw new IllegalArgumentException("User is not available!");
-        }
-        
-        // Check both user same or not 
-        if(userOne.getUserId().equals(userTwo.getUserId())){
-            throw new IllegalArgumentException("You can't follow yourself!");
-        }
 
-        // Logic for Accepting follow request 
-        Optional<FollowRequestTable> reqOpt =
-        followRequestRepo.findBySenderIdAndReceiverId(userTwo, userOne);
+        if (userOne.getUserId().equals(userTwo.getUserId()))
+            throw new IllegalArgumentException("You can't unfollow yourself!");
 
-        if(reqOpt.isEmpty()){
-            return;
-        }
+        // Check follow exists
+        FollowUser follow = followRepo.findByFollowerAndFollowing(userOne, userTwo)
+                            .orElseThrow(() -> new IllegalArgumentException("Not following!"));
 
-        String action = followRequest.getActionType();
-
-        if(action == null){
-            throw new IllegalArgumentException("Action type required!");
-        }
-
-        if("ACCEPT".equalsIgnoreCase(action)){
-            FollowUser acceptRequest = new FollowUser();
-            acceptRequest.setFollower(userTwo);
-            acceptRequest.setFollowing(userOne);
-            followRepo.save(acceptRequest);
-
-            followRequestRepo.delete(reqOpt.get());
-            return;
-        }
-
-        if("REJECT".equalsIgnoreCase(action)){
-            followRequestRepo.delete(reqOpt.get());
-            return;
-        }
+        followRepo.delete(follow);
     }
 
-    // Block User Logic ...
-    @Transactional
-    public String blockUserAction(BlockRequestDTO blockRequestDTO){
+
+    // 3. Cancel Follow Request ..
+    public void cancelFollowRequest(Long targetUserId) {
+
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users userOne = usersRepo.findByUserId(userUid)
+                            .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+
+        Users userTwo = usersRepo.findByUserId(targetUserId)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        if (userTwo.isStatusDeleted())
+            throw new IllegalArgumentException("User is not available!");
+
+        if (userOne.getUserId().equals(userTwo.getUserId()))
+            throw new IllegalArgumentException("Invalid action!");
+
+        // Check request exists
+        FollowRequestTable req = followRequestRepo.findBySenderIdAndReceiverId(userOne, userTwo)
+                                .orElseThrow(() -> new IllegalArgumentException("No request found!"));
+
+        followRequestRepo.delete(req);
+    }
+
+
+
+    // 4. Block User Logic ...
+    public String blockUserAction(Long targetUserId){
         
         // 1️⃣ Get logged-in username from JWT
         String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -168,12 +151,7 @@ public class ProfileActionService {
                               .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
         
         // 2. Target user
-        String searchUidStr = blockRequestDTO.getUserUid();
-        if(searchUidStr == null || searchUidStr.isEmpty()){
-            throw new IllegalArgumentException("Target ID is missing!");
-        }
-        Long searchUid = Long.parseLong(searchUidStr);
-        Users userTwo = usersRepo.findByUserId(searchUid)
+        Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
         // Check search user id is soft deactivate or not 
@@ -203,12 +181,33 @@ public class ProfileActionService {
         followRequestRepo.deleteBySenderIdAndReceiverId(userOne, userTwo);
         followRequestRepo.deleteBySenderIdAndReceiverId(userTwo, userOne);
 
+        // Relation CleanUp if exists
+        secretCrushRepo.deleteByUserOneAndUserTwo(userOne, userTwo);
+        secretCrushRepo.deleteByUserOneAndUserTwo(userTwo, userOne);
+        secretCrushRequestRepo.deleteBySenderIdAndAnonymousId(userOne, userTwo);
+        secretCrushRequestRepo.deleteBySenderIdAndAnonymousId(userTwo, userOne);
+
+        // User Data Cleanup if exists
+        if(userOne.getUserData() != null && 
+        userTwo.getUserId().equals(userOne.getUserData().getTimeUser())){
+            userOne.getUserData().setTimeUser(null);
+            usersRepo.save(userOne);
+        }
+
+        // userTwo ka timeUser sirf tab null karo jab userOne se match ho
+        if(userTwo.getUserData() != null && 
+        userOne.getUserId().equals(userTwo.getUserData().getTimeUser())){
+            userTwo.getUserData().setTimeUser(null);
+            usersRepo.save(userTwo);
+        }
+
         return "Blocked successfully!";
     }
 
+
+
     // Unblock User Logic ...
-    @Transactional
-    public String unblockUserAction(BlockRequestDTO blockRequestDTO){
+    public String unblockUserAction(Long targetUserId){
         // 1️⃣ Get logged-in username from JWT
         String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userUid = Long.parseLong(userIdStr);   
@@ -216,12 +215,7 @@ public class ProfileActionService {
                               .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
         
         // 2. Target user
-        String searchUidStr = blockRequestDTO.getUserUid();
-        if(searchUidStr == null || searchUidStr.isEmpty()){
-            throw new IllegalArgumentException("Target ID is missing!");
-        }
-        Long searchUid = Long.parseLong(searchUidStr);
-        Users userTwo = usersRepo.findByUserId(searchUid)
+        Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
         // Check search user id is soft deactivate or not 
@@ -244,5 +238,121 @@ public class ProfileActionService {
         
         return "Unblocked successfully!";
     }
+
+
+
+    // Send Anonymous Like Logic ...
+    public void sendAnonymousLike(Long targetUserId){
+        //  Get logged-in username from JWT
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);   
+        Users userOne = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        
+        // Target user
+        Users userTwo = usersRepo.findByUserId(targetUserId)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+
+        // Check search user id is soft deactivate or not 
+        if(userTwo.isStatusDeleted()){
+            throw new IllegalArgumentException("User is not available!");   
+        }
+        // Check both user same or not
+        if(userOne.getUserId().equals(userTwo.getUserId())){
+            throw new IllegalArgumentException("You can't send to yourself!");
+        }
+
+        // Check if user has blocked the other user
+        boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo)
+                        || blockRepo.existsByBlockerAndBlocked(userTwo, userOne);
+        if(isBlocked){
+            throw new IllegalArgumentException("Action not allowed! User is blocked.");
+        }
+
+        boolean alreadyMatched = secretCrushRepo.existsByUserOneAndUserTwo(userOne, userTwo)
+                      || secretCrushRepo.existsByUserOneAndUserTwo(userTwo, userOne);
+        if(alreadyMatched){
+            throw new IllegalArgumentException("Already matched!");
+        }
+
+        //  Already sent request check
+        boolean alreadySent = secretCrushRequestRepo.existsBySenderIdAndAnonymousId(userOne, userTwo);
+        if (alreadySent) {
+            throw new IllegalArgumentException("Already sent!");
+        }
+
+        //  Check reciprocal request
+        boolean reciprocalRequest = secretCrushRequestRepo.existsBySenderIdAndAnonymousId(userTwo, userOne);
+        if (reciprocalRequest) {
+
+            // Delete old relation of both users
+            secretCrushRepo.deleteByUser(userTwo);
+            secretCrushRepo.deleteByUser(userOne);
+
+            // UserOne ka purana match null karo
+            if (userOne.getUserData() != null && userOne.getUserData().getTimeUser() != null) {
+                Long oldMatchOfUserOne = userOne.getUserData().getTimeUser();
+                usersRepo.findByUserId(oldMatchOfUserOne).ifPresent(oldMatch -> {
+                    if (oldMatch.getUserData() != null) {
+                        oldMatch.getUserData().setTimeUser(null);
+                        usersRepo.save(oldMatch);
+                    }
+                });
+            }
+
+            // UserTwo ka purana match null karo
+            if (userTwo.getUserData() != null && userTwo.getUserData().getTimeUser() != null) {
+                Long oldMatchOfUserTwo = userTwo.getUserData().getTimeUser();
+                usersRepo.findByUserId(oldMatchOfUserTwo).ifPresent(oldMatch -> {
+                    if (oldMatch.getUserData() != null) {
+                        oldMatch.getUserData().setTimeUser(null);
+                        usersRepo.save(oldMatch);
+                    }
+                });
+            }
+
+            // Create new relation
+            SecretCrushRelation relation = new SecretCrushRelation();
+
+            relation.setUserOne(userOne);
+            relation.setUserTwo(userTwo);
+            secretCrushRepo.save(relation);
+
+            // Delete old pending request
+            secretCrushRequestRepo.deleteBySenderIdAndAnonymousId(userOne, userTwo);
+            secretCrushRequestRepo.deleteBySenderIdAndAnonymousId(userTwo, userOne);
+
+            // Entry into User Data 
+            if (userOne.getUserData() != null) {
+                userOne.getUserData().setTimeUser(userTwo.getUserId());
+                usersRepo.save(userOne);
+            }else{
+                UserData newUserData = new UserData();
+                newUserData.setTimeUser(userTwo.getUserId());
+                userOne.setUserData(newUserData);
+                usersRepo.save(userOne);
+            }
+
+            if( userTwo.getUserData() != null) {
+                userTwo.getUserData().setTimeUser(userOne.getUserId());
+                usersRepo.save(userTwo);
+            }else{
+                UserData newUserData = new UserData();
+                newUserData.setTimeUser(userOne.getUserId());
+                userTwo.setUserData(newUserData);
+                usersRepo.save(userTwo);
+            }
+
+            return;
+        }
+
+        // Send new request
+        SecretCrushRequest request = new SecretCrushRequest();
+        request.setSenderId(userOne);
+        request.setAnonymousId(userTwo);
+        secretCrushRequestRepo.save(request);
+
+        }
 
 }

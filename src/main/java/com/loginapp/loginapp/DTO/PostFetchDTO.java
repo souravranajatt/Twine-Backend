@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class PostFetchDTO {
+
+    // Post Details
     private String fetchPostId;
     private String fetchFileName;
     private String fetchPostLocation;
@@ -35,6 +37,12 @@ public class PostFetchDTO {
     private boolean commentEnable;
     private boolean shareEnable;
     private boolean likeHide;
+
+    // Post Flags
+    private boolean isLikedByCurrentUser;
+    private boolean isSavedByCurrentUser;
+
+    
 
 
 
@@ -178,6 +186,18 @@ public class PostFetchDTO {
     }
     public void setLikeHide(boolean likeHide) {
         this.likeHide = likeHide;
+    }
+    public boolean isLikedByCurrentUser() {
+        return isLikedByCurrentUser;
+    }
+    public void setLikedByCurrentUser(boolean isLikedByCurrentUser) {
+        this.isLikedByCurrentUser = isLikedByCurrentUser;
+    }
+    public boolean isSavedByCurrentUser() {
+        return isSavedByCurrentUser;
+    }
+    public void setSavedByCurrentUser(boolean isSavedByCurrentUser) {
+        this.isSavedByCurrentUser = isSavedByCurrentUser;
     }
     
 }

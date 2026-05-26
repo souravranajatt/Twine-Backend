@@ -29,42 +29,56 @@ public class HomeFeedService {
     @Autowired
     private UserAffinityRepo userAffinityRepo;
 
+    @Autowired
+    private BlockRepo blockRepo;
+
     public List<PostFetchDTO> getHomeFeed(int page){
 
-        // ✅ 1. Current User
+        // 1. Current User
         String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
         Long userUid = Long.parseLong(userIdStr);
 
         Users user = usersRepo.findByUserId(userUid)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Pageable pageable = PageRequest.of(page, 10);
+        if(user.isStatusDeleted()){
+            throw new IllegalArgumentException("User not found");
+        }
 
-        // ✅ 2. Following Users
+        Pageable pageable = PageRequest.of(page, 10);
+        Pageable categoryPageable = PageRequest.of(0, 5);
+
+        // 2. Blocked IDs fetch 
+        List<Users> blockedUsers = blockRepo.findBlockedUsers(user);
+        List<Users> blockedByUsers = blockRepo.findBlockedByUsers(user);
+
+        Set<Long> blockedIds = new HashSet<>();
+        blockedUsers.forEach(u -> blockedIds.add(u.getUserId()));
+        blockedByUsers.forEach(u -> blockedIds.add(u.getUserId()));
+
+        // 3. Following Users
         List<Users> followingUsers = followRepo.findFollowingUsers(user);
 
-        // ✅ 3. Following Posts
         List<PostsEntity> followingPosts = new ArrayList<>();
         if(!followingUsers.isEmpty()){
             followingPosts = homeFeedRepo.getFollowingPosts(followingUsers, pageable);
         }
 
-        // ✅ 4. Interest Based
+        // 4. Interest Based
         List<String> categories = userAffinityRepo.findTopCategories(userUid);
 
         List<PostsEntity> interestPosts = new ArrayList<>();
-
         for(String category : categories){
             interestPosts.addAll(
-                homeFeedRepo.getPostsByCategory(category, pageable)
+                homeFeedRepo.getPostsByCategory(category, categoryPageable)
             );
         }
 
-        // ✅ 5. Trending + Recent
+        // 5. Trending + Recent
         List<PostsEntity> trendingPosts = homeFeedRepo.getTrendingPosts(pageable);
         List<PostsEntity> recentPosts = homeFeedRepo.getRecentPosts(pageable);
 
-        // ✅ 6. Merge all
+        // 6. Merge all
         List<PostsEntity> finalFeed = new ArrayList<>();
 
         finalFeed.addAll(followingPosts);
@@ -72,10 +86,16 @@ public class HomeFeedService {
         finalFeed.addAll(trendingPosts);
         finalFeed.addAll(recentPosts);
 
-        // ✅ 7. Shuffle (mix feed)
+        // 7. Shuffle (mix feed)
         Collections.shuffle(finalFeed);
 
-        // ✅ 8. Remove duplicates (important 🔥)
+        // 8. Filter out blocked content
+        finalFeed.removeIf(post ->
+            blockedIds.contains(post.getUserpost().getUserId()) ||
+            post.getUserpost().getUserId().equals(userUid)
+        );
+
+        // 9. Remove duplicates (important 🔥)
         Set<Long> seen = new HashSet<>();
         List<PostsEntity> uniqueFeed = new ArrayList<>();
 
@@ -86,7 +106,7 @@ public class HomeFeedService {
             }
         }
 
-        // ✅ 9. Convert to DTO
+        // 10. Convert to DTO
         List<PostFetchDTO> dtoList = new ArrayList<>();
 
         for(PostsEntity post : uniqueFeed){
@@ -99,25 +119,27 @@ public class HomeFeedService {
             dto.setFetchPostLocation(post.getPostLocation());
             dto.setFetchUploadAt(post.getUploadAt());
 
-            // 👤 user
+            // user details
             dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
             dto.setUsername(post.getUserpost().getUsername());
             dto.setFullname(post.getUserpost().getFullname());
-            dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
+            if(post.getUserpost().getUserData() != null){
+                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
+            }
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
 
-            // ❤️ stats
+            // stats record
             dto.setLikeCount(String.valueOf(post.getLikeCount()));
             dto.setCommentCount(String.valueOf(post.getCommentCount()));
             dto.setViewCount(String.valueOf(post.getViewCount()));
             dto.setSaveCount(String.valueOf(post.getSaveCount()));
 
-            // ⚙️ settings
+            // setting data
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setShareEnable(post.getShareEnabled());
             dto.setLikeHide(!post.getLikeVisible());
 
-            // 🎥 media
+            // media data
             PostMedia media = postMediaRepo.findPostMedia(post);
 
             if(media != null){
