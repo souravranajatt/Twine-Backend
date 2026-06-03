@@ -16,11 +16,10 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(
-    name = "post_like",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "post_id"})
+@Table(name = "saved_posts", 
+    uniqueConstraints= @UniqueConstraint(columnNames = {"user_id", "post_id"})
 )
-public class PostLike {
+public class SavedPosts {
 
     @Id
     @GeneratedValue(generator = "snowflake")
@@ -28,8 +27,8 @@ public class PostLike {
         name = "snowflake",
         strategy = "com.loginapp.loginapp.Utils.SnowflakeIdGenerator"
     )
-    @Column(name = "like_id", nullable = false, unique = true)
-    private Long likeId;
+    @Column(name = "saved_id", nullable = false, unique = true)
+    private Long savedId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -39,47 +38,41 @@ public class PostLike {
     @JoinColumn(name = "post_id", nullable = false)
     private PostsEntity post;
 
-    @Column(name = "create_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "saved_at", nullable = false, updatable = false)
+    private LocalDateTime savedAt;
 
-    public PostLike() {
+    public SavedPosts() {
     }
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+        if (savedAt == null) {
+            savedAt = LocalDateTime.now();
         }
     }
 
-    // Getter & Setter 
+    // Getters and Setters 
 
-    public Long getLikeId() {
-        return likeId;
+    public Long getSavedId() {
+        return savedId;
     }
-
-    public void setLikeId(Long likeId) {
-        this.likeId = likeId;
+    public void setSavedId(Long savedId) {
+        this.savedId = savedId;
     }
-
     public Users getUser() {
         return user;
     }
-
     public void setUser(Users user) {
         this.user = user;
     }
-
     public PostsEntity getPost() {
         return post;
     }
-
     public void setPost(PostsEntity post) {
         this.post = post;
     }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public LocalDateTime getSavedAt() {
+        return savedAt;
     }
 
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
+import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class SettingService {
     
     @Autowired
@@ -54,6 +56,10 @@ public class SettingService {
     // Email regex
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+
+    // Mobile number regex (optional +, 7 to 15 digits)
+    private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
+    private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
     // Profile Data Fetch Setting Service
     public SettingDataDTO settingProfileData(){
@@ -93,7 +99,7 @@ public class SettingService {
 
         // Update User Data
         
-        // ====== 1. Null and Empty Checks ======
+        //  1. Null and Empty Checks 
         if (updateDataDTO.getUsername() == null || updateDataDTO.getUsername().trim().isEmpty()) {
             throw new IllegalArgumentException("Username is required!");
         }
@@ -101,7 +107,7 @@ public class SettingService {
             throw new IllegalArgumentException("Fullname is required!");
         }
 
-        // ====== 2. Trim and Normalize Data ======
+        //  2. Trim Data 
         String fullnameFinal = updateDataDTO.getFullname().trim();
         String usernameFinal = updateDataDTO.getUsername().trim().toLowerCase();
 
@@ -109,7 +115,7 @@ public class SettingService {
             throw new IllegalArgumentException("Fullname can't exceed 30 characters!");
         }
 
-        // ====== 4. Username Validation ======
+        //  4. Username Validation 
         if (usernameFinal.length() > 25) {
             throw new IllegalArgumentException("Username can't exceed 25 characters!");
         }
@@ -127,34 +133,57 @@ public class SettingService {
 
 
 
-        // ====== Update Users entity ======
+        //  Update Users entity 
         user.setFullname(fullnameFinal);
         user.setUsername(usernameFinal);
 
-        // ====== Handle Cloudinary Base64 Photo Upload ======
+        //  Handle Cloudinary Base64 Photo Upload 
         String photoStr = updateDataDTO.getProfilePictureUrl();
-        if (photoStr != null && photoStr.trim().isEmpty()) {
-            updateDataDTO.setProfilePictureUrl(null); // Save as null if removed/empty
-        } else if (photoStr != null && photoStr.startsWith("data:image")) {
-            try {
-                String[] parts = photoStr.split(",");
-                String base64Data = parts.length > 1 ? parts[1] : parts[0];
-                String contentType = parts[0].split(";")[0].split(":")[1];
-                
-                // Sanitize base64 and use MimeDecoder to handle any whitespaces or newlines robustly
-                String cleanBase64 = base64Data.replaceAll("\\s", "");
-                byte[] imageBytes = java.util.Base64.getMimeDecoder().decode(cleanBase64);
-                
-                String fileName = "TWINE_PID" + user.getUserId() + "_" + System.currentTimeMillis();
-                
-                String newPhotoUrl = cloudinaryService.uploadFile(imageBytes, fileName, contentType);
-                updateDataDTO.setProfilePictureUrl(newPhotoUrl);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Failed to upload profile photo!");
-            }
-        }
+            if (photoStr != null && photoStr.trim().isEmpty()) {
+                updateDataDTO.setProfilePictureUrl(null);
+            } else if (photoStr != null && photoStr.startsWith("data:image")) {
+                try {
+                    String[] parts = photoStr.split(",");
 
-        // ====== Update or Create UserData entity ======
+                    // check format validity
+                    if (parts.length < 2) {
+                        throw new IllegalArgumentException("Invalid image format!");
+                    }
+
+                    String base64Data = parts[1];
+                    String contentType = parts[0].split(";")[0].split(":")[1];
+
+                    // ceheck allowed formats
+                    if (!List.of(
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp",
+                        "image/heic",
+                        "image/heif"
+                    ).contains(contentType)) {
+                        throw new IllegalArgumentException("Only JPEG, PNG, WEBP, HEIC images allowed!");
+                    }
+
+                    String cleanBase64 = base64Data.replaceAll("\\s", "");
+                    byte[] imageBytes = java.util.Base64.getMimeDecoder().decode(cleanBase64);
+
+                    //  Size check — 20MB max
+                    if (imageBytes.length > 20 * 1024 * 1024) {
+                        throw new IllegalArgumentException("Photo too large! Max 20MB allowed.");
+                    }
+
+                    String fileName = "TWINE_PID" + user.getUserId() + "_" + System.currentTimeMillis();
+                    String newPhotoUrl = cloudinaryService.uploadFile(imageBytes, fileName, contentType);
+                    updateDataDTO.setProfilePictureUrl(newPhotoUrl);
+
+                } catch (IllegalArgumentException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to upload profile photo!");
+                }
+            }
+
+        //  Update or Create UserData entity 
         if(user.getUserData() != null){
             user.getUserData().setUserBio(updateDataDTO.getBio());
             user.getUserData().setUserLocation(updateDataDTO.getLocation());
@@ -179,7 +208,7 @@ public class SettingService {
         return "Profile updated successfully!";
     }
 
-    // Update Privacy Status Service
+    // Update Privacy Status Service (Private/Public)
     @Transactional
     public String updatePrivacyPrivateStatus(boolean isPrivate) {
         // Get UserId from Security Context JWT Token
@@ -268,7 +297,6 @@ public class SettingService {
     }
 
     // Fetching Blocked Users List Service
-    @Transactional
     public List<BlockedUserFetchDTO> fetchBlockedUsersList() {
         // Get UserId from Security Context JWT Token
         String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -295,6 +323,70 @@ public class SettingService {
 
         return blockedUsers;
             
+    }
+
+    // User Personal Details Fetch Logic ..
+    public PersonalDetailsDTO personalDetailsFetch() {
+
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        PersonalDetailsDTO detailsDTO = new PersonalDetailsDTO();
+        detailsDTO.setEmailId(user.getEmail());
+        detailsDTO.setMobileNumber(user.getMobileNumber());
+        return detailsDTO;
+    }
+
+    public String personalDetailsUpdate(PersonalDetailsDTO personalDetailsDTO) {
+
+        // Get UserId from Security Context JWT Token
+        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
+        Long userUid = Long.parseLong(userIdStr);
+        Users user = usersRepo.findByUserId(userUid)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        // ✅ Dono null ya empty hain toh submit mat karo
+        boolean emailEmpty = personalDetailsDTO.getEmailId() == null || 
+                            personalDetailsDTO.getEmailId().trim().isEmpty();
+        boolean mobileEmpty = personalDetailsDTO.getMobileNumber() == null || 
+                            personalDetailsDTO.getMobileNumber().trim().isEmpty();
+
+        if (emailEmpty) {
+            throw new IllegalArgumentException("Please provide email!");
+        }
+        if (mobileEmpty) {
+            throw new IllegalArgumentException("Please provide mobile number!");
+        }
+
+        // Validate and Update Email
+        String newEmail = personalDetailsDTO.getEmailId();
+        if (newEmail != null && !newEmail.trim().isEmpty()) {
+            if (!EMAIL_PATTERN.matcher(newEmail).matches()) {
+                throw new IllegalArgumentException("Invalid email format!");
+            }
+            if (!user.getEmail().equals(newEmail) && usersRepo.findByEmail(newEmail).isPresent()) {
+                throw new IllegalArgumentException("Email already in use!");
+            }
+            user.setEmail(newEmail);
+        }
+
+        // Validate and Update Mobile Number
+        String newMobile = personalDetailsDTO.getMobileNumber();
+        if (newMobile != null && !newMobile.trim().isEmpty()) {
+            if (!MOBILE_PATTERN.matcher(newMobile).matches()) {
+                throw new IllegalArgumentException("Invalid mobile number format!");
+            }
+            if (!newMobile.equals(user.getMobileNumber()) && usersRepo.findByMobileNumber(newMobile).isPresent()) {
+                throw new IllegalArgumentException("Mobile number already in use!");
+            }
+            user.setMobileNumber(newMobile);
+        }
+
+        usersRepo.save(user);
+        return "Personal details updated successfully!";
     }
     
 }

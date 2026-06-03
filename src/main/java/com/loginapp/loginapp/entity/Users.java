@@ -28,6 +28,9 @@ public class Users {
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
+    @Column(name = "mobile_number", length = 15, nullable = true, unique = true)
+    private String mobileNumber;
+
     @Column(name = "password_hash", length = 100, nullable = false)
     private String passwordHash;
 
@@ -42,12 +45,6 @@ public class Users {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-    }
 
     // UserData Mapping using user_id for attach Information
     @OneToOne(mappedBy = "users", cascade = CascadeType.ALL)
@@ -57,14 +54,16 @@ public class Users {
     @OneToMany(mappedBy = "userpost", cascade = CascadeType.ALL)
     private List<PostsEntity> postsEntity;
 
-    
+    public Users() {
+        // Default constructor
+    }
 
-
-
-
-
-
-
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 
 
 
@@ -117,6 +116,12 @@ public class Users {
     }
     public void setStatusPrivate(boolean statusPrivate) {
         this.statusPrivate = statusPrivate;
+    }
+    public String getMobileNumber() {
+        return mobileNumber;
+    }
+    public void setMobileNumber(String mobileNumber) {
+        this.mobileNumber = mobileNumber;
     }
     
 }

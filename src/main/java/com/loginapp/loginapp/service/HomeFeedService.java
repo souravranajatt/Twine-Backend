@@ -32,6 +32,12 @@ public class HomeFeedService {
     @Autowired
     private BlockRepo blockRepo;
 
+    @Autowired
+    private PostLikeRepo postLikeRepo;
+
+    @Autowired
+    private SavedPostRepo savedPostRepo;
+
     public List<PostFetchDTO> getHomeFeed(int page){
 
         // 1. Current User
@@ -106,6 +112,18 @@ public class HomeFeedService {
             }
         }
 
+        // Like and Saved post ids for logged user 
+        List<Long> postIds = new ArrayList<>();
+        for(PostsEntity post : uniqueFeed){
+            postIds.add(post.getPostId());
+        }
+
+        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                postLikeRepo.findLikedPostIdsByUserAndPostIds(user, postIds);
+
+        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                savedPostRepo.findSavedPostIdsByUserAndPostIds(user, postIds);
+
         // 10. Convert to DTO
         List<PostFetchDTO> dtoList = new ArrayList<>();
 
@@ -148,6 +166,10 @@ public class HomeFeedService {
                 dto.setDuration(media.getDuration());
                 dto.setPostType(media.getPostType().name());
             }
+
+            // Status for Like and Saved
+            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
+            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
 
             dtoList.add(dto);
         }

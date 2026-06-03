@@ -11,11 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
+import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+
 
 
 
@@ -104,6 +105,31 @@ public class SettingController {
         }
     }
     
+    // Personal Details Fetch End Point
+    @GetMapping("/setting/personal/details/fetch")
+    public ResponseEntity<?> getPersonalDetails() {
+        try{
+            PersonalDetailsDTO detailsDTO = settingService.personalDetailsFetch();
+            return ResponseEntity.ok(detailsDTO);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Personal Details Update End Point
+    @PutMapping("/setting/personal/details/update")
+    public ResponseEntity<?> updatePersonalDetails(@RequestBody PersonalDetailsDTO personalDetailsDTO) {
+        try{
+            String result = settingService.personalDetailsUpdate(personalDetailsDTO);
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");    
+        }
+    }
 
     
 }

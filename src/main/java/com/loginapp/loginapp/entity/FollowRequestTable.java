@@ -1,11 +1,9 @@
 package com.loginapp.loginapp.entity;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import org.hibernate.annotations.GenericGenerator;
 
-import jakarta.annotation.Generated;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,6 +44,9 @@ public class FollowRequestTable {
     @Column(name = "requested_at", nullable = false, updatable = false)
     private LocalDateTime requestedOn;
 
+    public FollowRequestTable() {
+    }
+
     @PrePersist
     protected void onCreate() {
         if (requestedOn == null) {
@@ -83,7 +84,4 @@ public class FollowRequestTable {
         return requestedOn;
     }
 
-    public void setRequestedOn(LocalDateTime requestedOn) {
-        this.requestedOn = requestedOn;
-    }
 }

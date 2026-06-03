@@ -67,14 +67,18 @@ public class PostsEntity {
 
     @Column(name = "upload_at", nullable = false)
     private LocalDateTime uploadAt;
-    @PrePersist
-    protected void onCreate() {
-            this.uploadAt = LocalDateTime.now();
-    }
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private Users userpost;
+
+    public PostsEntity() {
+    }
+
+    @PrePersist
+    protected void onCreate() {
+            this.uploadAt = LocalDateTime.now();
+    }
 
 
     // Getter & Setters 

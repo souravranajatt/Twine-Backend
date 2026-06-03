@@ -1,5 +1,6 @@
 package com.loginapp.loginapp.service;
 
+import com.loginapp.loginapp.repository.SavedPostRepo;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +11,6 @@ import org.springframework.stereotype.Service;
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
-import com.loginapp.loginapp.config.CorsConfig;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserData;
@@ -18,6 +18,7 @@ import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
+import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SecretCrushRepo;
@@ -27,11 +28,14 @@ import com.loginapp.loginapp.repository.UsersRepo;
 import jakarta.transaction.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class ProfileService {
 
-    private final CorsConfig corsConfig;
+    @Autowired
+    private SavedPostRepo savedPostRepo;
 
     @Autowired 
     private UsersRepo usersRepo;
@@ -57,12 +61,10 @@ public class ProfileService {
     @Autowired
     private SecretCrushRequestRepo secretCrushRequestRepo;
 
-    ProfileService(CorsConfig corsConfig) {
-        this.corsConfig = corsConfig;
-    }
+    @Autowired
+    private PostLikeRepo postLikeRepo;
 
     // Fetch search profile securely using projection
-    @Transactional
     public SearchUserResponse userProfile(String username) {
 
         // 1️⃣ Get logged-in user
@@ -205,6 +207,17 @@ public class ProfileService {
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
+        // Get Liked and Saved Post Ids for the logged-in user
+        List<Long> postIds = posts.stream()
+        .map(PostsEntity::getPostId)
+        .collect(Collectors.toList());
+
+        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
+
+        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
+
         for(PostsEntity post : posts){
 
             PostFetchDTO dto = new PostFetchDTO();
@@ -217,6 +230,14 @@ public class ProfileService {
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
             dto.setFetchVerified(userRes.isVerifyTag());
+
+            // Set Post User Details
+            dto.setFullname(post.getUserpost().getFullname());
+            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
+            dto.setUsername(post.getUserpost().getUsername());
+            if(post.getUserpost().getUserData() != null){
+                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
+            }
 
             PostMedia media = postMediaRepo.findByPost(post).orElse(null);
             if (media != null) {
@@ -237,6 +258,10 @@ public class ProfileService {
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeHide(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
+
+            // Set Like Flag
+            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
+            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
 
             postsList.add(dto);
         }
@@ -272,7 +297,7 @@ public class ProfileService {
 
         boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
 
-        // ✅ Self check add kiya
+        //  Self check 
         if(userRes.getUserId().equals(userUid)){
             isFollowingPvt = true;
         }
@@ -300,6 +325,17 @@ public class ProfileService {
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
+        // Get Liked and Saved Post Ids for the logged-in user
+        List<Long> postIds = posts.stream()
+        .map(PostsEntity::getPostId)
+        .collect(Collectors.toList());
+
+        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
+
+        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
+
         for(PostsEntity post : posts){
 
             PostFetchDTO dto = new PostFetchDTO();
@@ -312,6 +348,14 @@ public class ProfileService {
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
             dto.setFetchVerified(userRes.isVerifyTag());
+
+            // Set Post User Details
+            dto.setFullname(post.getUserpost().getFullname());
+            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
+            dto.setUsername(post.getUserpost().getUsername());
+            if(post.getUserpost().getUserData() != null){
+                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
+            }
 
             PostMedia media = postMediaRepo.findByPost(post).orElse(null);
             if (media != null) {
@@ -329,6 +373,10 @@ public class ProfileService {
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeHide(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
+
+            // Set Like Flag
+            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
+            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
 
             postsList.add(dto);
         }
@@ -360,24 +408,53 @@ public class ProfileService {
 
         boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
 
-        //  Self check add kiya
+        //  self check 
         if(userRes.getUserId().equals(userUid)){
             isFollowingPvt = true;
         }
 
+        // check if user is private and not following or if logged user blocked the search user then return nothing
         boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, userRes);
         if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
             return Collections.emptyList();
         }
 
+        // check if postowner blocked me or blocked by me them return nothing
+        List<Long> blockedByMe = blockRepo.findByBlocker(loggedUser)
+            .stream()
+            .map(block -> block.getBlocked().getUserId())
+            .collect(Collectors.toList());
+
+        List<Long> blockedMe = blockRepo.findByBlocked(loggedUser)
+            .stream()
+            .map(block -> block.getBlocker().getUserId())
+            .collect(Collectors.toList());
+
+
         Pageable pageable = PageRequest.of(page, 10);
 
-        // ✅ userRes.getUsername() use karo
         List<PostsEntity> posts = postRepo.findTaggedPosts(userRes.getUsername(), pageable);
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
+        // Get Liked and Saved Post Ids for the logged-in user
+        List<Long> postIds = posts.stream()
+        .map(PostsEntity::getPostId)
+        .collect(Collectors.toList());
+
+        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
+
+        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
+
         for(PostsEntity post : posts){
+
+            // Check if post owner blocked me or I blocked post owner
+            Long postOwnerUserId = post.getUserpost().getUserId();
+            if(blockedByMe.contains(postOwnerUserId) || blockedMe.contains(postOwnerUserId)){
+                continue;
+            }
 
             PostFetchDTO dto = new PostFetchDTO();
 
@@ -389,6 +466,14 @@ public class ProfileService {
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
             dto.setFetchVerified(userRes.isVerifyTag());
+
+            // Set Post User Details
+            dto.setFullname(post.getUserpost().getFullname());
+            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
+            dto.setUsername(post.getUserpost().getUsername());
+            if(post.getUserpost().getUserData() != null){
+                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
+            }
 
             PostMedia media = postMediaRepo.findByPost(post).orElse(null);
             if (media != null) {
@@ -406,6 +491,10 @@ public class ProfileService {
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeHide(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
+
+            // Set Like Flag
+            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
+            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
 
             postsList.add(dto);
         }

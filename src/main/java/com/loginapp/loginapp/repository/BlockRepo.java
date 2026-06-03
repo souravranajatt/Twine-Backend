@@ -24,6 +24,10 @@ public interface BlockRepo extends JpaRepository<BlockUser, Long> {
     @Query("SELECT b FROM BlockUser b WHERE b.blocker = :blocker")
     List<BlockUser> findByBlocker(@Param("blocker") Users blocker);
 
+    // Find all blocked user by other user
+    @Query("SELECT b FROM BlockUser b WHERE b.blocked = :blocked")
+    List<BlockUser> findByBlocked(@Param("blocked") Users blocked);
+
     @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user")
     List<Users> findBlockedUsers(@Param("user") Users user);
 

@@ -43,6 +43,8 @@ public class SecretCrushRequest {
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
 
+    public SecretCrushRequest() {}
+
     @PrePersist
     protected void onCreate() {
         if (sentAt == null) {
@@ -72,9 +74,6 @@ public class SecretCrushRequest {
     }
     public LocalDateTime getSentAt() {
         return sentAt;
-    }
-    public void setSentAt(LocalDateTime sentAt) {
-        this.sentAt = sentAt;
     }
     
 }

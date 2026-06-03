@@ -45,6 +45,11 @@ public class PostMedia {
     @Column(name = "duration")
     private Integer duration;
 
+    public PostMedia() {
+    }
+
+    // Getters and Setters
+
     public Long getMediaId() {
         return mediaId;
     }

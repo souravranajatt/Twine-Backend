@@ -17,6 +17,10 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "post_categories")
 public class PostCategories {
+
+    public enum Sentiment { POSITIVE, NEGATIVE, NEUTRAL }
+    public enum ContentType { EDUCATIONAL, ENTERTAINMENT, NEWS, OPINION, MEME, OTHER }
+    
     
     @Id
     @Column(name = "post_id")
@@ -50,13 +54,14 @@ public class PostCategories {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    public PostCategories() {
+    }
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
 
-    public enum Sentiment { POSITIVE, NEGATIVE, NEUTRAL }
-    public enum ContentType { EDUCATIONAL, ENTERTAINMENT, NEWS, OPINION, MEME, OTHER }
     
     // Getters and Setters 
     
@@ -110,9 +115,6 @@ public class PostCategories {
     }
     public LocalDateTime getCreatedAt() {
         return createdAt;
-    }
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 
     

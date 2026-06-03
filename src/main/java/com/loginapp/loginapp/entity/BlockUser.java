@@ -40,6 +40,9 @@ public class BlockUser {
     @Column(name = "blocked_at", nullable = false, updatable = false)
     private LocalDateTime blockedAt;
 
+    public BlockUser() {
+    }
+
     @PrePersist
     protected void onCreate() {
         if (blockedAt == null) {
@@ -68,9 +71,6 @@ public class BlockUser {
     }
     public LocalDateTime getBlockedAt() {
         return blockedAt;
-    }
-    public void setBlockedAt(LocalDateTime blockedAt) {
-        this.blockedAt = blockedAt;
     }
 
     

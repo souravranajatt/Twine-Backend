@@ -47,6 +47,10 @@ public class UserData {
 
     @Column(name = "update_at", nullable = false, updatable = true)
     private LocalDateTime updateAt;
+
+    public UserData() {
+    }
+    
     @PrePersist
     protected void onCreate() {
             this.updateAt = LocalDateTime.now();

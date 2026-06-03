@@ -43,6 +43,8 @@ public class UserCategoryAffinity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    public UserCategoryAffinity() {}
+
     @PrePersist
     protected void onCreate() { this.updatedAt = LocalDateTime.now(); }
 

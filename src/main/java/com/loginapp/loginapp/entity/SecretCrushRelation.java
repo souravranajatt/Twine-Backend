@@ -43,6 +43,9 @@ public class SecretCrushRelation {
     @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
+    public SecretCrushRelation() {
+    }
+
     @PrePersist
     protected void onCreate() {
         if (startedAt == null) {
@@ -78,10 +81,6 @@ public class SecretCrushRelation {
 
     public LocalDateTime getStartedAt() {
         return startedAt;
-    }
-
-    public void setStartedAt(LocalDateTime startedAt) {
-        this.startedAt = startedAt;
-    }    
+    }   
 
 }

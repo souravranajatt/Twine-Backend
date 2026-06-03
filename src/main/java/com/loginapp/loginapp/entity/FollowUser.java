@@ -44,6 +44,9 @@ public class FollowUser {
     @Column(name = "create_at", nullable = false, updatable = false)
     private LocalDateTime followedOn;
 
+    public FollowUser() {
+    }
+
     @PrePersist
     protected void onCreate() {
         if (followedOn == null) {
