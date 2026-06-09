@@ -1,6 +1,8 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.hibernate.annotations.GenericGenerator;
 
 import jakarta.persistence.*;
@@ -47,12 +49,8 @@ public class Users {
     private LocalDateTime createdAt;
 
     // UserData Mapping using user_id for attach Information
-    @OneToOne(mappedBy = "users", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "users", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private UserData userData;
-
-    // PostEntity attach using user_id for accessing Post for User 
-    @OneToMany(mappedBy = "userpost", cascade = CascadeType.ALL)
-    private List<PostsEntity> postsEntity;
 
     public Users() {
         // Default constructor
@@ -61,7 +59,7 @@ public class Users {
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+            this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 
@@ -92,12 +90,6 @@ public class Users {
     }
     public void setUserData(UserData userData) {
         this.userData = userData;
-    }
-    public List<PostsEntity> getPostsEntity() {
-        return postsEntity;
-    }
-    public void setPostsEntity(List<PostsEntity> postsEntity) {
-        this.postsEntity = postsEntity;
     }
     public boolean isVerifyTag() {
         return verifyTag;

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.loginapp.loginapp.entity.UserCategoryAffinity;
+import com.loginapp.loginapp.entity.Users;
 
 @Repository
 public interface UserAffinityRepo extends JpaRepository<UserCategoryAffinity, Long> {
@@ -16,4 +17,10 @@ public interface UserAffinityRepo extends JpaRepository<UserCategoryAffinity, Lo
         ORDER BY u.affinityScore DESC
     """)
     List<String> findTopCategories(Long userId);
+
+    @Query("""
+        SELECT u FROM UserCategoryAffinity u
+        WHERE u.user = :user AND u.category = :category
+    """)
+    UserCategoryAffinity findByUserAndCategory(Users user, String category);
 }

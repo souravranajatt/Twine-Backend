@@ -1,6 +1,8 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.hibernate.annotations.GenericGenerator;
 
 import jakarta.persistence.Column;
@@ -46,7 +48,7 @@ public class BlockUser {
     @PrePersist
     protected void onCreate() {
         if (blockedAt == null) {
-            blockedAt = LocalDateTime.now();
+            blockedAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 

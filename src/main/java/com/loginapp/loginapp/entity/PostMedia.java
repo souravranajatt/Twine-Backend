@@ -25,7 +25,6 @@ public class PostMedia {
     @Column(name = "media_id", nullable = false, unique = true)
     private Long mediaId;
 
-
     @OneToOne
     @JoinColumn(name = "post_id", nullable = false, unique = true)
     private PostsEntity post;

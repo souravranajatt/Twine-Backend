@@ -1,6 +1,8 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.hibernate.annotations.GenericGenerator;
 import jakarta.persistence.*;
 
@@ -40,16 +42,13 @@ public class UserCategoryAffinity {
     @Column(name = "last_interacted_at")
     private LocalDateTime lastInteractedAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", updatable = false)
     private LocalDateTime updatedAt;
 
     public UserCategoryAffinity() {}
 
     @PrePersist
-    protected void onCreate() { this.updatedAt = LocalDateTime.now(); }
-
-    @PreUpdate
-    protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }
+    protected void onCreate() { this.updatedAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata")); }
 
     // Getters & Setters
     public Long getAffinityId() { return affinityId; }

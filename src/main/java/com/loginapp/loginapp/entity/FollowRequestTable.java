@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import org.hibernate.annotations.GenericGenerator;
 
@@ -50,7 +51,7 @@ public class FollowRequestTable {
     @PrePersist
     protected void onCreate() {
         if (requestedOn == null) {
-            requestedOn = LocalDateTime.now();
+            requestedOn = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 

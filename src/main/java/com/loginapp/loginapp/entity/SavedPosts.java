@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import org.hibernate.annotations.GenericGenerator;
 
@@ -47,7 +48,7 @@ public class SavedPosts {
     @PrePersist
     protected void onCreate() {
         if (savedAt == null) {
-            savedAt = LocalDateTime.now();
+            savedAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 

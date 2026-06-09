@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import org.hibernate.annotations.GenericGenerator;
 
@@ -50,7 +51,7 @@ public class FollowUser {
     @PrePersist
     protected void onCreate() {
         if (followedOn == null) {
-            followedOn = LocalDateTime.now();
+            followedOn = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 

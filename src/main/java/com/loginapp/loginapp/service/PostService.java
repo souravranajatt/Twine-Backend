@@ -7,7 +7,6 @@ import java.awt.image.BufferedImage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -15,12 +14,13 @@ import java.util.List;
 
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
+import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
-import com.loginapp.loginapp.repository.UsersRepo;
 
 import net.coobird.thumbnailator.Thumbnails;
 
@@ -31,7 +31,7 @@ public class PostService {
     private PostRepo postRepo;
     
     @Autowired
-    private UsersRepo usersRepo;
+    private AuthUtils authUtils;
 
     @Autowired
     private PostMediaRepo postMediaRepo;
@@ -47,10 +47,7 @@ public class PostService {
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
 
         // 1️⃣ Get logged-in username from JWT
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users user = authUtils.getLoggedUser();
 
         // 2️⃣ Get the file
         MultipartFile file = postUploadRequest.getFile();
@@ -109,7 +106,7 @@ public class PostService {
             post.setTimelineUser(user.getUserData().getTimeUser());
         }
 
-        // ✅ Cloudinary pe upload karo
+        // ✅ Cloudinary 
         String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + 
                           file.getOriginalFilename();
         String fileUrl = cloudinaryService.uploadFile(fileBytes, filename, contentType);

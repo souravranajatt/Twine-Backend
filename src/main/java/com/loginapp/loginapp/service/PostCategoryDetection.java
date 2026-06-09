@@ -26,12 +26,12 @@ public class PostCategoryDetection {
     private String groqApiKey;
 
     @Autowired
-    private PostCategoryService postCategoryService;  // ← add karo
+    private PostCategoryService postCategoryService;
 
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
 
     public void detectAndSaveCategory(PostsEntity post, String contentType) {
-        Long postId = post.getPostId();  // ← pehle ID lo thread se bahar
+        Long postId = post.getPostId(); 
         String fileName = post.getFileName();
         String caption = post.getPostCaption();
         String location = post.getPostLocation();
@@ -40,7 +40,7 @@ public class PostCategoryDetection {
             try {
                 String response = callGroq(postId, fileName, caption, location, contentType);
                 PostCategoryDTO dto = parseResponse(response);
-                postCategoryService.saveCategory(postId, dto);  // ← ID pass karo
+                postCategoryService.saveCategory(postId, dto);  
             } catch (Exception e) {
                 System.out.println("Category detection error: " + e.getMessage());
             }

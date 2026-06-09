@@ -1,14 +1,17 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,7 +22,7 @@ public class UserData {
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "user_id", nullable = false)
     private Users users;
@@ -53,7 +56,12 @@ public class UserData {
     
     @PrePersist
     protected void onCreate() {
-            this.updateAt = LocalDateTime.now();
+            this.updateAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+            this.updateAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
     }
 
     // Getters and Setters 

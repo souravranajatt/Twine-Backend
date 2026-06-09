@@ -3,7 +3,6 @@ package com.loginapp.loginapp.service;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
@@ -11,6 +10,8 @@ import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
+import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
@@ -30,6 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class SettingService {
+
+    @Autowired
+    private AuthUtils authUtils;
     
     @Autowired
     private UsersRepo usersRepo;
@@ -65,10 +69,7 @@ public class SettingService {
     public SettingDataDTO settingProfileData(){
 
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users user = authUtils.getLoggedUser();
 
         // Create and return SettingDataDTO
         SettingDataDTO settingDataDTO = new SettingDataDTO();
@@ -92,10 +93,7 @@ public class SettingService {
     public String settingProfileDataUpdate(SettingDataDTO updateDataDTO){
 
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users user = authUtils.getLoggedUser();
 
         // Update User Data
         
@@ -208,14 +206,11 @@ public class SettingService {
         return "Profile updated successfully!";
     }
 
+
     // Update Privacy Status Service (Private/Public)
-    @Transactional
     public String updatePrivacyPrivateStatus(boolean isPrivate) {
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+        Users user = authUtils.getLoggedUser();
 
         user.setStatusPrivate(isPrivate);
         usersRepo.save(user);
@@ -244,10 +239,7 @@ public class SettingService {
     // Account Deactivation Service (Soft Delete)
     public String deactivateAccount(DeactivateRequestDTO deactivateRequestDTO) {
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+        Users user = authUtils.getLoggedUser();
 
         // Verify Password
         if (deactivateRequestDTO.getPassword() == null || deactivateRequestDTO.getPassword().isEmpty()) {
@@ -267,10 +259,7 @@ public class SettingService {
     // Change Password Service
     public String changePasswordService(ChangePasswordRequestDTO changePasswordRequestDTO) {
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+        Users user = authUtils.getLoggedUser();
 
         // Validate Old Password
         if (changePasswordRequestDTO.getOldPassword() == null || changePasswordRequestDTO.getOldPassword().isEmpty()) {
@@ -299,11 +288,8 @@ public class SettingService {
     // Fetching Blocked Users List Service
     public List<BlockedUserFetchDTO> fetchBlockedUsersList() {
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
-        
+        Users user = authUtils.getLoggedUser();
+
         // Create Blocked Users List
         List<BlockedUserFetchDTO> blockedUsers = new ArrayList<>();
 
@@ -329,10 +315,7 @@ public class SettingService {
     public PersonalDetailsDTO personalDetailsFetch() {
 
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+        Users user = authUtils.getLoggedUser();
 
         PersonalDetailsDTO detailsDTO = new PersonalDetailsDTO();
         detailsDTO.setEmailId(user.getEmail());
@@ -343,12 +326,9 @@ public class SettingService {
     public String personalDetailsUpdate(PersonalDetailsDTO personalDetailsDTO) {
 
         // Get UserId from Security Context JWT Token
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users user = usersRepo.findByUserId(userUid)
-                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+        Users user = authUtils.getLoggedUser();
 
-        // ✅ Dono null ya empty hain toh submit mat karo
+        // if null or empty throw error 
         boolean emailEmpty = personalDetailsDTO.getEmailId() == null || 
                             personalDetailsDTO.getEmailId().trim().isEmpty();
         boolean mobileEmpty = personalDetailsDTO.getMobileNumber() == null || 

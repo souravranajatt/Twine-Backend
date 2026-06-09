@@ -1,5 +1,7 @@
 package com.loginapp.loginapp.entity;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.hibernate.annotations.GenericGenerator;
 
 import jakarta.persistence.*;
@@ -27,7 +29,7 @@ public class PostsEntity {
     @Column(name = "post_location")
     private String postLocation;
 
-    @Column(name = "post_caption", length = 250)
+    @Column(name = "post_caption", length = 1000)
     private String postCaption;
 
     @Column(name = "post_visiblity")
@@ -65,19 +67,25 @@ public class PostsEntity {
     @Column(name = "share_enabled")
     private Boolean shareEnabled = true;
 
-    @Column(name = "upload_at", nullable = false)
+    @Column(name = "upload_at", nullable = false, updatable = false)
     private LocalDateTime uploadAt;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private Users userpost;
 
+    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.EAGER) 
+    private PostMedia postMedia;
+
+    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private PostCategories postCategories;
+
     public PostsEntity() {
     }
 
     @PrePersist
     protected void onCreate() {
-            this.uploadAt = LocalDateTime.now();
+            this.uploadAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
     }
 
 
@@ -206,5 +214,23 @@ public class PostsEntity {
     public void setShareEnabled(Boolean shareEnabled) {
         this.shareEnabled = shareEnabled;
     }
+
+    public PostMedia getPostMedia() {
+        return postMedia;
+    }
+
+    public void setPostMedia(PostMedia postMedia) {
+        this.postMedia = postMedia;
+    }
+
+    public PostCategories getPostCategories() {
+        return postCategories;
+    }
+
+    public void setPostCategories(PostCategories postCategories) {
+        this.postCategories = postCategories;
+    }
+    
+    
     
 }

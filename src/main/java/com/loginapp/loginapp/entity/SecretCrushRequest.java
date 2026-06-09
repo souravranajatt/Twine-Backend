@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 import org.hibernate.annotations.GenericGenerator;
 
@@ -48,7 +49,7 @@ public class SecretCrushRequest {
     @PrePersist
     protected void onCreate() {
         if (sentAt == null) {
-            sentAt = LocalDateTime.now();
+            sentAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
         }
     }
 

@@ -7,10 +7,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
+import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserData;
@@ -19,13 +21,10 @@ import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.PostLikeRepo;
-import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SecretCrushRepo;
 import com.loginapp.loginapp.repository.SecretCrushRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
-
-import jakarta.transaction.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -50,9 +49,6 @@ public class ProfileService {
     private FollowRequestRepo followRequestRepo;
 
     @Autowired
-    private PostMediaRepo postMediaRepo;
-
-    @Autowired
     private BlockRepo blockRepo;
 
     @Autowired
@@ -64,16 +60,14 @@ public class ProfileService {
     @Autowired
     private PostLikeRepo postLikeRepo;
 
+    @Autowired
+    private AuthUtils authUtils;
+
     // Fetch search profile securely using projection
     public SearchUserResponse userProfile(String username) {
 
         // 1️⃣ Get logged-in user
-        Long userUid = Long.parseLong(
-                SecurityContextHolder.getContext().getAuthentication().getName()
-        );
-
-        Users loggedUser = usersRepo.findByUserId(userUid)
-                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users loggedUser = authUtils.getLoggedUser();
 
         if(loggedUser.isStatusDeleted()){
             throw new IllegalArgumentException("Something went wrong!");
@@ -124,7 +118,7 @@ public class ProfileService {
 
         // ================= PRIVATE / BLOCK LOGIC =================
         boolean isPrivate = user.isStatusPrivate();
-        boolean isFollowing = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, user.getUserId());
+        boolean isFollowing = followRepo.existsByFollower_UserIdAndFollowing_UserId(loggedUser.getUserId(), user.getUserId());
         boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, user);
 
         res.setSearchPrivate(isPrivate);
@@ -132,7 +126,7 @@ public class ProfileService {
         res.setBlockedStatus(isBlockedByLoggedUser);
 
         // ================= SELF vs OTHER =================
-        boolean isSelf = user.getUserId().equals(userUid);
+        boolean isSelf = user.getUserId().equals(loggedUser.getUserId());
         res.setSearchLoggedUser(isSelf);
 
         if (isSelf) {
@@ -146,7 +140,7 @@ public class ProfileService {
             res.setCrushSentStatus(false);
         } else {
             res.setFollowingStatus(isFollowing);
-            res.setFollowerStatus(followRepo.existsByFollower_UserIdAndFollowing_UserId(user.getUserId(), userUid));
+            res.setFollowerStatus(followRepo.existsByFollower_UserIdAndFollowing_UserId(user.getUserId(), loggedUser.getUserId()));
             res.setFollowReqStatus(followRequestRepo.existsBySenderIdAndReceiverId(loggedUser, user));
             res.setFollowReqOptStatus(followRequestRepo.existsBySenderIdAndReceiverId(user, loggedUser));
 
@@ -170,9 +164,7 @@ public class ProfileService {
     public List<PostFetchDTO> getSearchUserPosts(String username, int page){
 
         // Current User
-        Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
-        Users loggedUser = usersRepo.findByUserId(userUid)
-                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users loggedUser = authUtils.getLoggedUser();
 
         // Search User Found
         Users userRes = usersRepo.findByUsername(username)
@@ -189,10 +181,10 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
-        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
+        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(loggedUser.getUserId(), userRes.getUserId());
 
         // Self check
-        if(userRes.getUserId().equals(userUid)){
+        if(userRes.getUserId().equals(loggedUser.getUserId())){
             isFollowingPvt = true;
         }
 
@@ -239,7 +231,7 @@ public class ProfileService {
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
 
-            PostMedia media = postMediaRepo.findByPost(post).orElse(null);
+            PostMedia media = post.getPostMedia();
             if (media != null) {
                 dto.setWidth(media.getWidth());
                 dto.setHeight(media.getHeight());
@@ -250,10 +242,14 @@ public class ProfileService {
                 }
             }
 
-            dto.setCommentCount(post.getCommentCount()+"");
-            dto.setLikeCount(post.getLikeCount()+"");
-            dto.setSaveCount(post.getSaveCount()+"");
-            dto.setViewCount(post.getViewCount()+"");
+            // Set Counts
+            
+            dto.setCommentCount(post.getCommentCount());
+            dto.setLikeCount(post.getLikeCount());
+            dto.setSaveCount(post.getSaveCount());
+            dto.setViewCount(post.getViewCount());
+
+            // Set Post Settings
 
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeHide(post.getLikeVisible());
@@ -273,9 +269,7 @@ public class ProfileService {
     public List<PostFetchDTO> getSearchUserTimelinePosts(String username, int page){
 
         // Current User
-        Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
-        Users loggedUser = usersRepo.findByUserId(userUid)
-                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users loggedUser = authUtils.getLoggedUser();
 
         // Search User Found
         Users userRes = usersRepo.findByUsername(username)
@@ -295,10 +289,10 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
-        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
+        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(loggedUser.getUserId(), userRes.getUserId());
 
         //  Self check 
-        if(userRes.getUserId().equals(userUid)){
+        if(userRes.getUserId().equals(loggedUser.getUserId())){
             isFollowingPvt = true;
         }
 
@@ -357,7 +351,7 @@ public class ProfileService {
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
 
-            PostMedia media = postMediaRepo.findByPost(post).orElse(null);
+            PostMedia media = post.getPostMedia();
             if (media != null) {
                 dto.setWidth(media.getWidth());
                 dto.setHeight(media.getHeight());
@@ -365,10 +359,10 @@ public class ProfileService {
                 dto.setPostType(media.getPostType().name());
             }
 
-            dto.setCommentCount(post.getCommentCount()+"");
-            dto.setLikeCount(post.getLikeCount()+"");
-            dto.setSaveCount(post.getSaveCount()+"");
-            dto.setViewCount(post.getViewCount()+"");
+            dto.setCommentCount(post.getCommentCount());
+            dto.setLikeCount(post.getLikeCount());
+            dto.setSaveCount(post.getSaveCount());
+            dto.setViewCount(post.getViewCount());
 
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeHide(post.getLikeVisible());
@@ -388,9 +382,7 @@ public class ProfileService {
     public List<PostFetchDTO> getSearchUserTaggedPosts(String username, int page){
 
         // Current User
-        Long userUid = Long.parseLong(SecurityContextHolder.getContext().getAuthentication().getName());
-        Users loggedUser = usersRepo.findByUserId(userUid)
-                .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users loggedUser = authUtils.getLoggedUser();
 
         // Search User Found
         Users userRes = usersRepo.findByUsername(username)
@@ -406,10 +398,10 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
-        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(userUid, userRes.getUserId());
+        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(loggedUser.getUserId(), userRes.getUserId());
 
         //  self check 
-        if(userRes.getUserId().equals(userUid)){
+        if(userRes.getUserId().equals(loggedUser.getUserId())){
             isFollowingPvt = true;
         }
 
@@ -475,7 +467,7 @@ public class ProfileService {
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
 
-            PostMedia media = postMediaRepo.findByPost(post).orElse(null);
+            PostMedia media = post.getPostMedia();
             if (media != null) {
                 dto.setWidth(media.getWidth());
                 dto.setHeight(media.getHeight());
@@ -483,10 +475,10 @@ public class ProfileService {
                 dto.setPostType(media.getPostType().name());
             }
 
-            dto.setCommentCount(post.getCommentCount()+"");
-            dto.setLikeCount(post.getLikeCount()+"");
-            dto.setSaveCount(post.getSaveCount()+"");
-            dto.setViewCount(post.getViewCount()+"");
+            dto.setCommentCount(post.getCommentCount());
+            dto.setLikeCount(post.getLikeCount());
+            dto.setSaveCount(post.getSaveCount());
+            dto.setViewCount(post.getViewCount());
 
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeHide(post.getLikeVisible());

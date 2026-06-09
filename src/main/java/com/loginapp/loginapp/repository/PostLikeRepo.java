@@ -16,5 +16,7 @@ public interface PostLikeRepo extends JpaRepository<PostLike, Long> {
 
     @Query("SELECT pl.post.postId FROM PostLike pl WHERE pl.user = :user AND pl.post.postId IN :postIds")
     Set<Long> findLikedPostIdsByUserAndPostIds(@Param("user") Users user, @Param("postIds") List<Long> postIds);
+
+    Optional<PostLike> findByPostAndUser(PostsEntity post, Users loggedUser);
     
 }

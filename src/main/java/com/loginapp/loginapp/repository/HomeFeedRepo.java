@@ -13,7 +13,7 @@ import com.loginapp.loginapp.entity.Users;
 @Repository
 public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
     
-    // 🔹 Interest Based
+    // Interest
     @Query("""
         SELECT p FROM PostsEntity p
         JOIN PostCategories pc ON pc.post = p
@@ -25,7 +25,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
     """)
     List<PostsEntity> getPostsByCategory(String category, Pageable pageable);
 
-    // 🔹 Following Feed (FIXED )
+    // Following
     @Query("""
         SELECT p FROM PostsEntity p
         WHERE p.userpost IN :user
@@ -35,7 +35,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
     """)
     List<PostsEntity> getFollowingPosts(List<Users> user, Pageable pageable);
 
-    // 🔹 Trending
+    // Trending
     @Query("""
         SELECT p FROM PostsEntity p
         WHERE p.postVisiblity = true
@@ -45,7 +45,7 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long>{
     """)
     List<PostsEntity> getTrendingPosts(Pageable pageable);
 
-    // 🔹 Recent
+    // Recent
     @Query("""
         SELECT p FROM PostsEntity p
         WHERE p.postVisiblity = true

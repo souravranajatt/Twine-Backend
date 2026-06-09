@@ -1,4 +1,4 @@
-package com.loginapp.loginapp.service;
+package com.loginapp.loginapp.Utils;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;

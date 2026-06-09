@@ -28,10 +28,10 @@ public class PostFetchDTO {
     private boolean fetchVerified;
 
     // Post Like and Comment 
-    private String likeCount;
-    private String commentCount;
-    private String viewCount;
-    private String saveCount;
+    private Long likeCount;
+    private Long commentCount;
+    private Long viewCount;
+    private Long saveCount;
 
     // Post Setting 
     private boolean commentEnable;
@@ -39,8 +39,8 @@ public class PostFetchDTO {
     private boolean likeHide;
 
     // Post Flags
-    private boolean isLikedByCurrentUser;
-    private boolean isSavedByCurrentUser;
+    private boolean likedByCurrentUser;
+    private boolean savedByCurrentUser;
 
     
 
@@ -145,28 +145,28 @@ public class PostFetchDTO {
     public void setFullname(String fullname) {
         this.fullname = fullname;
     }
-    public String getLikeCount() {
+    public Long getLikeCount() {
         return likeCount;
     }
-    public void setLikeCount(String likeCount) {
+    public void setLikeCount(Long likeCount) {
         this.likeCount = likeCount;
     }
-    public String getCommentCount() {
+    public Long getCommentCount() {
         return commentCount;
     }
-    public void setCommentCount(String commentCount) {
+    public void setCommentCount(Long commentCount) {
         this.commentCount = commentCount;
     }
-    public String getViewCount() {
+    public Long getViewCount() {
         return viewCount;
     }
-    public void setViewCount(String viewCount) {
+    public void setViewCount(Long viewCount) {
         this.viewCount = viewCount;
     }
-    public String getSaveCount() {
+    public Long getSaveCount() {
         return saveCount;
     }
-    public void setSaveCount(String saveCount) {
+    public void setSaveCount(Long saveCount) {
         this.saveCount = saveCount;
     }
     public boolean isCommentEnable() {
@@ -188,16 +188,16 @@ public class PostFetchDTO {
         this.likeHide = likeHide;
     }
     public boolean isLikedByCurrentUser() {
-        return isLikedByCurrentUser;
+        return likedByCurrentUser;
     }
-    public void setLikedByCurrentUser(boolean isLikedByCurrentUser) {
-        this.isLikedByCurrentUser = isLikedByCurrentUser;
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) {
+        this.likedByCurrentUser = likedByCurrentUser;
     }
     public boolean isSavedByCurrentUser() {
-        return isSavedByCurrentUser;
+        return savedByCurrentUser;
     }
-    public void setSavedByCurrentUser(boolean isSavedByCurrentUser) {
-        this.isSavedByCurrentUser = isSavedByCurrentUser;
+    public void setSavedByCurrentUser(boolean savedByCurrentUser) {
+        this.savedByCurrentUser = savedByCurrentUser;
     }
     
 }

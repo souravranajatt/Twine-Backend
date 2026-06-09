@@ -2,8 +2,10 @@ package com.loginapp.loginapp.service;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.BlockUser;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
@@ -18,12 +20,13 @@ import com.loginapp.loginapp.repository.SecretCrushRepo;
 import com.loginapp.loginapp.repository.SecretCrushRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
-import jakarta.transaction.Transactional;
-
 @Service
 @Transactional
 public class ProfileActionService {
      
+    @Autowired
+    private AuthUtils authUtils;
+
     @Autowired
     private UsersRepo usersRepo;
 
@@ -45,10 +48,8 @@ public class ProfileActionService {
     // 1. Follow User Logic..
     public void followUser(Long targetUserId) {
 
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users userOne = usersRepo.findByUserId(userUid)
-                            .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        // Get logged user details from security context
+        Users userOne = authUtils.getLoggedUser();
 
         Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
@@ -93,10 +94,8 @@ public class ProfileActionService {
     // 2. Unfollow User Logic..
     public void unfollowUser(Long targetUserId) {
 
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users userOne = usersRepo.findByUserId(userUid)
-                            .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        // Get logged user details from security context
+        Users userOne = authUtils.getLoggedUser();
 
         Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
@@ -118,10 +117,8 @@ public class ProfileActionService {
     // 3. Cancel Follow Request ..
     public void cancelFollowRequest(Long targetUserId) {
 
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Users userOne = usersRepo.findByUserId(userUid)
-                            .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        // Get logged user details from security context
+        Users userOne = authUtils.getLoggedUser();
 
         Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
@@ -145,10 +142,7 @@ public class ProfileActionService {
     public String blockUserAction(Long targetUserId){
         
         // 1️⃣ Get logged-in username from JWT
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);   
-        Users userOne = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users userOne = authUtils.getLoggedUser();
         
         // 2. Target user
         Users userTwo = usersRepo.findByUserId(targetUserId)
@@ -209,10 +203,7 @@ public class ProfileActionService {
     // Unblock User Logic ...
     public String unblockUserAction(Long targetUserId){
         // 1️⃣ Get logged-in username from JWT
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);   
-        Users userOne = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users userOne = authUtils.getLoggedUser();
         
         // 2. Target user
         Users userTwo = usersRepo.findByUserId(targetUserId)
@@ -244,10 +235,7 @@ public class ProfileActionService {
     // Send Anonymous Like Logic ...
     public void sendAnonymousLike(Long targetUserId){
         //  Get logged-in username from JWT
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);   
-        Users userOne = usersRepo.findByUserId(userUid)
-                              .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+        Users userOne = authUtils.getLoggedUser();
         
         // Target user
         Users userTwo = usersRepo.findByUserId(targetUserId)

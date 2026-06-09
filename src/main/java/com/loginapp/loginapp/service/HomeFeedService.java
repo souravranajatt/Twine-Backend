@@ -4,27 +4,23 @@ import java.util.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostFetchDTO;
+import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.*;
 import com.loginapp.loginapp.repository.*;
 
 @Service
+@Transactional
 public class HomeFeedService {
-
-    @Autowired
-    private UsersRepo usersRepo;
 
     @Autowired
     private FollowRepo followRepo;
 
     @Autowired
     private HomeFeedRepo homeFeedRepo;
-
-    @Autowired
-    private PostMediaRepo postMediaRepo;
 
     @Autowired
     private UserAffinityRepo userAffinityRepo;
@@ -38,14 +34,14 @@ public class HomeFeedService {
     @Autowired
     private SavedPostRepo savedPostRepo;
 
+    @Autowired
+    private AuthUtils authUtils;
+
     public List<PostFetchDTO> getHomeFeed(int page){
 
         // 1. Current User
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-
-        Users user = usersRepo.findByUserId(userUid)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        Users user = authUtils.getLoggedUser();
+        
 
         if(user.isStatusDeleted()){
             throw new IllegalArgumentException("User not found");
@@ -71,7 +67,7 @@ public class HomeFeedService {
         }
 
         // 4. Interest Based
-        List<String> categories = userAffinityRepo.findTopCategories(userUid);
+        List<String> categories = userAffinityRepo.findTopCategories(user.getUserId());
 
         List<PostsEntity> interestPosts = new ArrayList<>();
         for(String category : categories){
@@ -98,8 +94,7 @@ public class HomeFeedService {
         // 8. Filter out blocked content
         finalFeed.removeIf(post ->
             blockedIds.contains(post.getUserpost().getUserId()) ||
-            post.getUserpost().getUserId().equals(userUid)
-        );
+            post.getUserpost().getUserId().equals(user.getUserId()));
 
         // 9. Remove duplicates (important 🔥)
         Set<Long> seen = new HashSet<>();
@@ -147,10 +142,10 @@ public class HomeFeedService {
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
 
             // stats record
-            dto.setLikeCount(String.valueOf(post.getLikeCount()));
-            dto.setCommentCount(String.valueOf(post.getCommentCount()));
-            dto.setViewCount(String.valueOf(post.getViewCount()));
-            dto.setSaveCount(String.valueOf(post.getSaveCount()));
+            dto.setLikeCount(post.getLikeCount());
+            dto.setCommentCount(post.getCommentCount());
+            dto.setViewCount(post.getViewCount());
+            dto.setSaveCount(post.getSaveCount());
 
             // setting data
             dto.setCommentEnable(post.getCommentEnabled());
@@ -158,7 +153,7 @@ public class HomeFeedService {
             dto.setLikeHide(!post.getLikeVisible());
 
             // media data
-            PostMedia media = postMediaRepo.findPostMedia(post);
+            PostMedia media = post.getPostMedia();
 
             if(media != null){
                 dto.setWidth(media.getWidth());
