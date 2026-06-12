@@ -2,7 +2,6 @@ package com.loginapp.loginapp.service;
 
 import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
@@ -32,26 +31,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SettingService {
 
-    @Autowired
-    private AuthUtils authUtils;
+    // Inject Other Files thorugh constructor
+
+    private final AuthUtils authUtils;
     
-    @Autowired
-    private UsersRepo usersRepo;
+    private final UsersRepo usersRepo;
 
-    @Autowired
-    private CloudinaryService cloudinaryService;
+    private final CloudinaryService cloudinaryService;
 
-    @Autowired
-    private FollowRequestRepo followRequestRepo;
+    private final FollowRequestRepo followRequestRepo;
 
-    @Autowired
-    private FollowRepo followRepo;
+    private final FollowRepo followRepo;
 
-    @Autowired
-    private PasswordHashing passwordHashing;
+    private final PasswordHashing passwordHashing;
 
-    @Autowired
-    private BlockRepo blockRepo;
+    private final BlockRepo blockRepo;
 
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
@@ -64,6 +58,16 @@ public class SettingService {
     // Mobile number regex (optional +, 7 to 15 digits)
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
+
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo) {
+        this.authUtils = authUtils;
+        this.usersRepo = usersRepo;
+        this.cloudinaryService = cloudinaryService;
+        this.followRequestRepo = followRequestRepo;
+        this.followRepo = followRepo;
+        this.passwordHashing = passwordHashing;
+        this.blockRepo = blockRepo;
+    }
 
     // Profile Data Fetch Setting Service
     public SettingDataDTO settingProfileData(){
@@ -294,15 +298,14 @@ public class SettingService {
         List<BlockedUserFetchDTO> blockedUsers = new ArrayList<>();
 
         // Get All Blocked User List where current user is the blocker
-        List<BlockUser> blockedList = blockRepo.findByBlocker(user);
+        List<Users> blockedList = blockRepo.findBlockedUsers(user);
 
-        for (BlockUser block : blockedList) {
-            Users blockedUser = block.getBlocked();
+        for (Users block : blockedList) {
             BlockedUserFetchDTO dto = new BlockedUserFetchDTO();
-            dto.setUsername(blockedUser.getUsername());
-            dto.setUserId(blockedUser.getUserId().toString());
-            if (blockedUser.getUserData() != null) {
-                dto.setProfilePicture(blockedUser.getUserData().getProfilePhoto());
+            dto.setUsername(block.getUsername());
+            dto.setUserId(block.getUserId().toString());
+            if (block.getUserData() != null) {
+                dto.setProfilePicture(block.getUserData().getProfilePhoto());
             }
             blockedUsers.add(dto);
         }

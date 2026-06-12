@@ -2,7 +2,6 @@ package com.loginapp.loginapp.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,8 +23,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequestMapping("/api")
 public class SettingController {
     
-    @Autowired
-    private SettingService settingService;
+    private final SettingService settingService;
+
+    SettingController(SettingService settingService) {
+        this.settingService = settingService;
+    }
 
     // Logged User Profile Fetch End Point
     @GetMapping("/setting/profile/fetch")    

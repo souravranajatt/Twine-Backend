@@ -2,7 +2,6 @@ package com.loginapp.loginapp.controller;
 
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,8 +18,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 @RequestMapping("/api/post")
 public class PostController {
     
-    @Autowired
-    private PostService postService;
+    private final PostService postService;
+
+    PostController(PostService postService) {
+        this.postService = postService;
+    }
 
     @PostMapping("/uploadpost")
     public ResponseEntity<PostUploadResponse> postUploadLive(@ModelAttribute PostUploadRequest postUploadRequest) {

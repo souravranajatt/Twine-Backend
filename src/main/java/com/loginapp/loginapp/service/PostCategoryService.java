@@ -2,7 +2,6 @@ package com.loginapp.loginapp.service;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +12,19 @@ import com.loginapp.loginapp.repository.PostCategoryRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 
 @Service
+@Transactional
 public class PostCategoryService {
 
-    @Autowired
-    private PostCategoryRepo postCategoryRepo;
+    // Inject Other Files thorugh constructor
 
-    @Autowired
-    private PostRepo postRepo;
+    private final PostCategoryRepo postCategoryRepo;
+
+    private final PostRepo postRepo;
+
+    PostCategoryService(PostCategoryRepo postCategoryRepo, PostRepo postRepo) {
+        this.postCategoryRepo = postCategoryRepo;
+        this.postRepo = postRepo;
+    }
 
     @Transactional
     public void saveCategory(Long postId, PostCategoryDTO dto) {

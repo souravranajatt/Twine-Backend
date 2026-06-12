@@ -22,6 +22,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
 
         @Query("""
                 SELECT p FROM PostsEntity p
+                LEFT JOIN FETCH p.postMedia
                 WHERE p.userpost=:user
                 AND p.postVisiblity = true
                 And p.userpost.statusDeleted = false
@@ -31,6 +32,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
 
         @Query("""
                 SELECT p FROM PostsEntity p
+                LEFT JOIN FETCH p.postMedia
                 WHERE p.timelineUser=:userid
                 AND p.userpost.userId = :tuserid
                 AND p.postVisiblity = true
@@ -41,6 +43,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
 
         @Query("""
                 SELECT p FROM PostsEntity p
+                LEFT JOIN FETCH p.postMedia
                 WHERE :username MEMBER OF p.taggedUsers
                 AND p.postVisiblity = true
                 AND p.userpost.statusDeleted = false

@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,8 +13,12 @@ import com.loginapp.loginapp.service.PostActionService;
 @RequestMapping("/api/v2/posts")
 public class PostActionController {
 
-    @Autowired
-    private PostActionService postActionService;
+    private final PostActionService postActionService;
+
+
+    PostActionController(PostActionService postActionService) {
+        this.postActionService = postActionService;
+    }
 
 
     // Like a Post
@@ -67,6 +70,19 @@ public class PostActionController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }catch(Exception e){
             return ResponseEntity.status(500).body("An error occurred while unsaving the post.");
+        }
+    }
+
+    // View a Post
+    @PostMapping("/posts/{postId}/view")
+    public ResponseEntity<?> viewPost(@PathVariable Long postId){
+        try{
+            postActionService.viewPost(postId);
+            return ResponseEntity.ok("Viewed!");
+        }catch(IllegalArgumentException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("An error occurred while updating the view count.");
         }
     }
 

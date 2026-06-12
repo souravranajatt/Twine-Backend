@@ -3,7 +3,6 @@ package com.loginapp.loginapp.service;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +27,14 @@ public class AffinityService {
 
     public static final float MIN_CONFIDENCE = 0.6f;
 
-    @Autowired
-    private UserAffinityRepo userAffinityRepo;
+    // Inject Other Files thorugh constructor
+
+    private final UserAffinityRepo userAffinityRepo;
+
+
+    AffinityService(UserAffinityRepo userAffinityRepo) {
+        this.userAffinityRepo = userAffinityRepo;
+    }
     
     
     // On Like 

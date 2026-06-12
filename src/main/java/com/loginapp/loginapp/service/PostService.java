@@ -4,8 +4,8 @@ import org.mp4parser.IsoFile;
 import java.io.ByteArrayInputStream;
 import java.nio.channels.Channels;
 import java.awt.image.BufferedImage;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -25,24 +25,31 @@ import com.loginapp.loginapp.repository.PostRepo;
 import net.coobird.thumbnailator.Thumbnails;
 
 @Service
+@Transactional
 public class PostService {
+
+    // Define max file size (500MB)
+    private static final long MAX_FILE_SIZE = 500 * 1024 * 1024;
+
+    // Inject Other Files thorugh constructor
     
-    @Autowired
-    private PostRepo postRepo;
+    private final PostRepo postRepo;
     
-    @Autowired
-    private AuthUtils authUtils;
+    private final AuthUtils authUtils;
 
-    @Autowired
-    private PostMediaRepo postMediaRepo;
+    private final PostMediaRepo postMediaRepo;
 
-    @Autowired
-    private PostCategoryDetection postCategoryDetection;
+    private final PostCategoryDetection postCategoryDetection;
 
-    @Autowired
-    private CloudinaryService cloudinaryService;    
+    private final CloudinaryService cloudinaryService;    
 
-    private static final long MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+    PostService(PostRepo postRepo, AuthUtils authUtils, PostMediaRepo postMediaRepo, PostCategoryDetection postCategoryDetection, CloudinaryService cloudinaryService) {
+        this.postRepo = postRepo;
+        this.authUtils = authUtils;
+        this.postMediaRepo = postMediaRepo;
+        this.postCategoryDetection = postCategoryDetection;
+        this.cloudinaryService = cloudinaryService;
+    }
 
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
 

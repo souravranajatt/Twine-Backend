@@ -74,10 +74,10 @@ public class PostsEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private Users userpost;
 
-    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.EAGER) 
+    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.LAZY) 
     private PostMedia postMedia;
 
-    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PostCategories postCategories;
 
     public PostsEntity() {

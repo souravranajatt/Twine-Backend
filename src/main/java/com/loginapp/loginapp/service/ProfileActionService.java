@@ -1,7 +1,6 @@
 package com.loginapp.loginapp.service;
 
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,27 +22,32 @@ import com.loginapp.loginapp.repository.UsersRepo;
 @Service
 @Transactional
 public class ProfileActionService {
+
+    // Inject Other Files thorugh constructor
      
-    @Autowired
-    private AuthUtils authUtils;
+    private final AuthUtils authUtils;
 
-    @Autowired
-    private UsersRepo usersRepo;
+    private final UsersRepo usersRepo;
 
-    @Autowired
-    private FollowRepo followRepo;
+    private final FollowRepo followRepo;
 
-    @Autowired
-    private FollowRequestRepo followRequestRepo;
+    private final FollowRequestRepo followRequestRepo;
 
-    @Autowired
-    private BlockRepo blockRepo;
+    private final BlockRepo blockRepo;
 
-    @Autowired
-    private SecretCrushRepo secretCrushRepo;
+    private final SecretCrushRepo secretCrushRepo;
 
-    @Autowired
-    private SecretCrushRequestRepo secretCrushRequestRepo;
+    private final SecretCrushRequestRepo secretCrushRequestRepo;
+
+    ProfileActionService(SecretCrushRequestRepo secretCrushRequestRepo, AuthUtils authUtils, UsersRepo usersRepo, FollowRepo followRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo) {
+        this.secretCrushRequestRepo = secretCrushRequestRepo;
+        this.authUtils = authUtils;
+        this.usersRepo = usersRepo;
+        this.followRepo = followRepo;
+        this.followRequestRepo = followRequestRepo;
+        this.blockRepo = blockRepo;
+        this.secretCrushRepo = secretCrushRepo;
+    }
 
     // 1. Follow User Logic..
     public void followUser(Long targetUserId) {

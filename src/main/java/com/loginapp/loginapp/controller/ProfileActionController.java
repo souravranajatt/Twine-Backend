@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,8 +15,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 @RequestMapping("/api/v1")
 public class ProfileActionController {
     
-    @Autowired
-    private ProfileActionService profileActionService;
+    private final ProfileActionService profileActionService;
+
+
+    ProfileActionController(ProfileActionService profileActionService) {
+        this.profileActionService = profileActionService;
+    }
 
 
     // Follow/Unfollow User Endpoint

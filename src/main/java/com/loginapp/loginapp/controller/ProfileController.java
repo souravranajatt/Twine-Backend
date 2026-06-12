@@ -2,7 +2,6 @@ package com.loginapp.loginapp.controller;
 
 import java.util.*;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,8 +16,11 @@ import com.loginapp.loginapp.service.ProfileService;
 @RequestMapping("/api")
 public class ProfileController {
 
-    @Autowired
-    private ProfileService profileService;
+    private final ProfileService profileService;
+
+    ProfileController(ProfileService profileService) {
+        this.profileService = profileService;
+    }
 
     // Search User Profile Fetch End Point ...
     @GetMapping("/profile/{username}")

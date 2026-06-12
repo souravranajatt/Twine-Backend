@@ -1,127 +1,173 @@
 package com.loginapp.loginapp.service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
-import com.loginapp.loginapp.entity.*;
+import com.loginapp.loginapp.entity.PostMedia;
+import com.loginapp.loginapp.entity.PostsEntity;
+import com.loginapp.loginapp.entity.UserCategoryAffinity;
+import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.*;
 
 @Service
 @Transactional
 public class HomeFeedService {
 
-    @Autowired
-    private FollowRepo followRepo;
+    // Inject Other Files thorugh Constructor
 
-    @Autowired
-    private HomeFeedRepo homeFeedRepo;
+    private final FollowRepo followRepo;
+    private final HomeFeedRepo homeFeedRepo;
+    private final UserAffinityRepo userAffinityRepo;
+    private final BlockRepo blockRepo;
+    private final PostLikeRepo postLikeRepo;
+    private final SavedPostRepo savedPostRepo;
+    private final PostSeenRepo postSeenRepo;
+    private final AuthUtils authUtils;
 
-    @Autowired
-    private UserAffinityRepo userAffinityRepo;
+    HomeFeedService(
+        FollowRepo followRepo,
+        AuthUtils authUtils,
+        BlockRepo blockRepo,
+        UserAffinityRepo userAffinityRepo,
+        PostLikeRepo postLikeRepo,
+        HomeFeedRepo homeFeedRepo,
+        SavedPostRepo savedPostRepo,
+        PostSeenRepo postSeenRepo
+    ){
+        this.followRepo = followRepo;
+        this.authUtils = authUtils;
+        this.blockRepo = blockRepo;
+        this.userAffinityRepo = userAffinityRepo;
+        this.postLikeRepo = postLikeRepo;
+        this.homeFeedRepo = homeFeedRepo;
+        this.savedPostRepo = savedPostRepo;
+        this.postSeenRepo = postSeenRepo;
+    }
 
-    @Autowired
-    private BlockRepo blockRepo;
+    public List<PostFetchDTO> getHomeFeed(int page) {
 
-    @Autowired
-    private PostLikeRepo postLikeRepo;
-
-    @Autowired
-    private SavedPostRepo savedPostRepo;
-
-    @Autowired
-    private AuthUtils authUtils;
-
-    public List<PostFetchDTO> getHomeFeed(int page){
-
-        // 1. Current User
+        // 1. Get Logged User Info
         Users user = authUtils.getLoggedUser();
-        
-
         if(user.isStatusDeleted()){
             throw new IllegalArgumentException("User not found");
         }
 
-        Pageable pageable = PageRequest.of(page, 10);
-        Pageable categoryPageable = PageRequest.of(0, 5);
-
-        // 2. Blocked IDs fetch 
-        List<Users> blockedUsers = blockRepo.findBlockedUsers(user);
-        List<Users> blockedByUsers = blockRepo.findBlockedByUsers(user);
-
+        // 2. Get all Blocked and Blocker IDs
         Set<Long> blockedIds = new HashSet<>();
-        blockedUsers.forEach(u -> blockedIds.add(u.getUserId()));
-        blockedByUsers.forEach(u -> blockedIds.add(u.getUserId()));
+        blockRepo.findBlockedUsers(user).forEach(u -> blockedIds.add(u.getUserId()));
+        blockRepo.findBlockedByUsers(user).forEach(u -> blockedIds.add(u.getUserId()));
 
-        // 3. Following Users
+        // 3. Get all viewed Post IDs
+        Set<Long> seenPostIds = postSeenRepo.findSeenPostIdsByUser(user);
+        Set<Long> safeSeenIds = seenPostIds.isEmpty() ? Set.of(-1L) : seenPostIds;
+
+        // 4. Set Date For Filter in DB Query
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        LocalDateTime twoMonthsAgo = now.minusMonths(2);
+        LocalDateTime sevenDaysAgo = now.minusDays(7);
+        LocalDateTime oneDayAgo = now.minusHours(24);
+
+        // 5. Get Following Users Posts
         List<Users> followingUsers = followRepo.findFollowingUsers(user);
-
         List<PostsEntity> followingPosts = new ArrayList<>();
         if(!followingUsers.isEmpty()){
-            followingPosts = homeFeedRepo.getFollowingPosts(followingUsers, pageable);
-        }
-
-        // 4. Interest Based
-        List<String> categories = userAffinityRepo.findTopCategories(user.getUserId());
-
-        List<PostsEntity> interestPosts = new ArrayList<>();
-        for(String category : categories){
-            interestPosts.addAll(
-                homeFeedRepo.getPostsByCategory(category, categoryPageable)
+            followingPosts = homeFeedRepo.getFollowingPosts(
+                followingUsers,
+                safeSeenIds,
+                PageRequest.of(page, 10)
             );
         }
 
-        // 5. Trending + Recent
-        List<PostsEntity> trendingPosts = homeFeedRepo.getTrendingPosts(pageable);
-        List<PostsEntity> recentPosts = homeFeedRepo.getRecentPosts(pageable);
+        // 6. Interest Based Posts Fetching
+        List<UserCategoryAffinity> affinities = userAffinityRepo
+            .findTopAffinitiesWithScore(user.getUserId());
 
-        // 6. Merge all
+        List<PostsEntity> interestPosts = new ArrayList<>();
+        if(!affinities.isEmpty()){
+
+            float totalScore = 0f;
+            for(UserCategoryAffinity aff : affinities){
+                totalScore += aff.getAffinityScore();
+            }
+
+            int totalInterestPosts = 15;
+
+            for(UserCategoryAffinity aff : affinities){
+                float ratio = aff.getAffinityScore() / totalScore;
+                int postsForCategory = Math.max(1, Math.round(ratio * totalInterestPosts));
+
+                interestPosts.addAll(
+                    homeFeedRepo.getPostsByCategory(
+                        aff.getCategory(),
+                        twoMonthsAgo,
+                        oneDayAgo,
+                        safeSeenIds,
+                        PageRequest.of(0, postsForCategory)
+                    )
+                );
+            }
+        }
+
+        // 7. Trending Posts Fetching
+        List<PostsEntity> trendingPosts = homeFeedRepo.getTrendingPosts(
+            sevenDaysAgo,
+            oneDayAgo,
+            PageRequest.of(0, 10)
+        );
+
+        // 8. Merge all posts with weight
         List<PostsEntity> finalFeed = new ArrayList<>();
+        finalFeed.addAll(followingPosts.stream().limit(10).toList()); // 40%
+        finalFeed.addAll(interestPosts.stream().limit(8).toList());   // 30%
+        finalFeed.addAll(trendingPosts.stream().limit(5).toList());   // 20%
 
-        finalFeed.addAll(followingPosts);
-        finalFeed.addAll(interestPosts);
-        finalFeed.addAll(trendingPosts);
-        finalFeed.addAll(recentPosts);
+        // 9. If Feed Posts is less than Add Random High Reaching Posts
+        if(finalFeed.size() < 10){
+            List<PostsEntity> fallbackPosts = homeFeedRepo.getFallbackPosts(
+                safeSeenIds,
+                PageRequest.of(0, 20)
+            );
+            finalFeed.addAll(fallbackPosts);
+        }
 
-        // 7. Shuffle (mix feed)
+        // 10. Mix all Posts 
         Collections.shuffle(finalFeed);
 
-        // 8. Filter out blocked content
+        // 11. Checking blocker and blocked User posts and myself too
         finalFeed.removeIf(post ->
             blockedIds.contains(post.getUserpost().getUserId()) ||
-            post.getUserpost().getUserId().equals(user.getUserId()));
+            post.getUserpost().getUserId().equals(user.getUserId())
+        );
 
-        // 9. Remove duplicates (important 🔥)
-        Set<Long> seen = new HashSet<>();
+        // 12. Remove Duplicate
+        Set<Long> seenInFeed = new HashSet<>();
         List<PostsEntity> uniqueFeed = new ArrayList<>();
-
         for(PostsEntity post : finalFeed){
-            if(!seen.contains(post.getPostId())){
-                seen.add(post.getPostId());
+            if(seenInFeed.add(post.getPostId())){
                 uniqueFeed.add(post);
             }
         }
 
-        // Like and Saved post ids for logged user 
-        List<Long> postIds = new ArrayList<>();
-        for(PostsEntity post : uniqueFeed){
-            postIds.add(post.getPostId());
-        }
+        // 13. Get all  Like/Saved Posts Ids
+        List<Long> postIds = uniqueFeed.stream()
+            .map(PostsEntity::getPostId)
+            .toList();
 
         Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                postLikeRepo.findLikedPostIdsByUserAndPostIds(user, postIds);
+            postLikeRepo.findLikedPostIdsByUserAndPostIds(user, postIds);
 
         Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                savedPostRepo.findSavedPostIdsByUserAndPostIds(user, postIds);
+            savedPostRepo.findSavedPostIdsByUserAndPostIds(user, postIds);
 
-        // 10. Convert to DTO
+        // 14. DTO Convert
         List<PostFetchDTO> dtoList = new ArrayList<>();
-
         for(PostsEntity post : uniqueFeed){
 
             PostFetchDTO dto = new PostFetchDTO();
@@ -132,7 +178,7 @@ public class HomeFeedService {
             dto.setFetchPostLocation(post.getPostLocation());
             dto.setFetchUploadAt(post.getUploadAt());
 
-            // user details
+            // User details
             dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
             dto.setUsername(post.getUserpost().getUsername());
             dto.setFullname(post.getUserpost().getFullname());
@@ -141,20 +187,19 @@ public class HomeFeedService {
             }
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
 
-            // stats record
+            // Stats
             dto.setLikeCount(post.getLikeCount());
             dto.setCommentCount(post.getCommentCount());
             dto.setViewCount(post.getViewCount());
             dto.setSaveCount(post.getSaveCount());
 
-            // setting data
+            // Settings
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setShareEnable(post.getShareEnabled());
             dto.setLikeHide(!post.getLikeVisible());
 
-            // media data
+            // Posts Media Data
             PostMedia media = post.getPostMedia();
-
             if(media != null){
                 dto.setWidth(media.getWidth());
                 dto.setHeight(media.getHeight());
@@ -162,7 +207,7 @@ public class HomeFeedService {
                 dto.setPostType(media.getPostType().name());
             }
 
-            // Status for Like and Saved
+            // Like/Save status
             dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
             dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
 

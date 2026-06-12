@@ -3,7 +3,6 @@ package com.loginapp.loginapp.controller;
 import java.util.List;
 import java.util.Collections;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +13,11 @@ import com.loginapp.loginapp.service.HomeFeedService;
 @RequestMapping("/api")
 public class HomeFeedController {
 
-    @Autowired
-    private HomeFeedService homeFeedService;
+    private final HomeFeedService homeFeedService;
+
+    HomeFeedController(HomeFeedService homeFeedService) {
+        this.homeFeedService = homeFeedService;
+    }
 
     // ✅ Home Feed API
     @GetMapping("/feed")

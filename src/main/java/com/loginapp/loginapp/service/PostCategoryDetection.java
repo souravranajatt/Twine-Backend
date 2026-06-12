@@ -1,8 +1,8 @@
 package com.loginapp.loginapp.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostCategoryDTO;
 import com.loginapp.loginapp.entity.PostsEntity;
@@ -20,15 +20,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class PostCategoryDetection {
 
     @Value("${groq.api.key}")
     private String groqApiKey;
 
-    @Autowired
-    private PostCategoryService postCategoryService;
-
     private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
+
+    // Inject Other Files thorugh constructor
+
+    private final PostCategoryService postCategoryService;
+
+    PostCategoryDetection(PostCategoryService postCategoryService) {
+        this.postCategoryService = postCategoryService;
+    }
 
     public void detectAndSaveCategory(PostsEntity post, String contentType) {
         Long postId = post.getPostId(); 

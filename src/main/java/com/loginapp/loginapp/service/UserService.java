@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,16 +16,16 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Service
+@Transactional
 public class UserService {
 
-    @Autowired
-    private UsersRepo usersRepo;
+    // Inject Other Files thorugh constructor
 
-    @Autowired
-    private JwtUtils jwtUtils;
+    private final UsersRepo usersRepo;
 
-    @Autowired
-    private PasswordHashing passwordHashing;
+    private final JwtUtils jwtUtils;
+
+    private final PasswordHashing passwordHashing;
 
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
@@ -35,6 +34,13 @@ public class UserService {
     // Email regex
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+
+
+    UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing) {
+        this.usersRepo = usersRepo;
+        this.jwtUtils = jwtUtils;
+        this.passwordHashing = passwordHashing;
+    }
 
 
     // Signup with validation

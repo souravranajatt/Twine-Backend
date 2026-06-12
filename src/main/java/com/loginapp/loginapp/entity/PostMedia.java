@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -25,13 +26,16 @@ public class PostMedia {
     @Column(name = "media_id", nullable = false, unique = true)
     private Long mediaId;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id", nullable = false, unique = true)
     private PostsEntity post;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "post_type", nullable = false, length = 20)
     private PostType postType;
+
+    @Column(name = "thumbnail")
+    private String thumbnail;
 
     @Column(name = "width")
     private Integer width;
@@ -96,8 +100,13 @@ public class PostMedia {
     public void setDuration(Integer duration) {
         this.duration = duration;
     }
-    
-    
 
+    public String getThumbnail() {
+        return thumbnail;
+    }
+
+    public void setThumbnail(String thumbnail) {
+        this.thumbnail = thumbnail;
+    }
 
 }

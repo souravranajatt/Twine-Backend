@@ -3,7 +3,6 @@ package com.loginapp.loginapp.service;
 import com.loginapp.loginapp.repository.SavedPostRepo;
 import org.springframework.data.domain.Pageable;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,35 +32,38 @@ import java.util.stream.Collectors;
 @Transactional
 public class ProfileService {
 
-    @Autowired
-    private SavedPostRepo savedPostRepo;
+    private final SavedPostRepo savedPostRepo;
 
-    @Autowired 
-    private UsersRepo usersRepo;
+    private final UsersRepo usersRepo;
 
-    @Autowired
-    private FollowRepo followRepo;
+    private final FollowRepo followRepo;
 
-    @Autowired
-    private PostRepo postRepo;
+    private final PostRepo postRepo;
 
-    @Autowired
-    private FollowRequestRepo followRequestRepo;
+    private final FollowRequestRepo followRequestRepo;
 
-    @Autowired
-    private BlockRepo blockRepo;
+    private final BlockRepo blockRepo;
 
-    @Autowired
-    private SecretCrushRepo secretCrushRepo;
+    private final SecretCrushRepo secretCrushRepo;
 
-    @Autowired
-    private SecretCrushRequestRepo secretCrushRequestRepo;
+    private final SecretCrushRequestRepo secretCrushRequestRepo;
 
-    @Autowired
-    private PostLikeRepo postLikeRepo;
+    private final PostLikeRepo postLikeRepo;
 
-    @Autowired
-    private AuthUtils authUtils;
+    private final AuthUtils authUtils;
+
+    ProfileService(SavedPostRepo savedPostRepo, UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, PostLikeRepo postLikeRepo, AuthUtils authUtils) {
+        this.savedPostRepo = savedPostRepo;
+        this.usersRepo = usersRepo;
+        this.followRepo = followRepo;
+        this.postRepo = postRepo;
+        this.followRequestRepo = followRequestRepo;
+        this.blockRepo = blockRepo;
+        this.secretCrushRepo = secretCrushRepo;
+        this.secretCrushRequestRepo = secretCrushRequestRepo;
+        this.postLikeRepo = postLikeRepo;
+        this.authUtils = authUtils;
+    }
 
     // Fetch search profile securely using projection
     public SearchUserResponse userProfile(String username) {
@@ -412,14 +414,14 @@ public class ProfileService {
         }
 
         // check if postowner blocked me or blocked by me them return nothing
-        List<Long> blockedByMe = blockRepo.findByBlocker(loggedUser)
+        List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
             .stream()
-            .map(block -> block.getBlocked().getUserId())
+            .map(block -> block.getUserId())
             .collect(Collectors.toList());
 
-        List<Long> blockedMe = blockRepo.findByBlocked(loggedUser)
+        List<Long> blockedMe = blockRepo.findBlockedByUsers(loggedUser)
             .stream()
-            .map(block -> block.getBlocker().getUserId())
+            .map(block -> block.getUserId())
             .collect(Collectors.toList());
 
 
