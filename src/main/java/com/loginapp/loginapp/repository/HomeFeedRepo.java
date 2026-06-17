@@ -19,6 +19,8 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long> {
     // Interest Based Posts
     @Query("""
         SELECT p FROM PostsEntity p
+        LEFT JOIN FETCH p.postMedia
+        JOIN FETCH p.userpost
         JOIN PostCategories pc ON pc.post = p
         WHERE pc.primaryCategory = :category
         AND p.postVisiblity = true
@@ -47,6 +49,8 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long> {
     // Following List Posts
     @Query("""
         SELECT p FROM PostsEntity p
+        LEFT JOIN FETCH p.postMedia
+        JOIN FETCH p.userpost
         WHERE p.userpost IN :users
         AND p.postVisiblity = true
         AND p.userpost.statusDeleted = false
@@ -62,6 +66,8 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long> {
     // Trending Posts
     @Query("""
         SELECT p FROM PostsEntity p
+        LEFT JOIN FETCH p.postMedia
+        JOIN FETCH p.userpost
         WHERE p.postVisiblity = true
         AND p.userpost.statusPrivate = false
         AND p.userpost.statusDeleted = false
@@ -86,6 +92,8 @@ public interface HomeFeedRepo extends JpaRepository<PostsEntity, Long> {
     // Posts for newly created account 
     @Query("""
         SELECT p FROM PostsEntity p
+        LEFT JOIN FETCH p.postMedia
+        JOIN FETCH p.userpost
         WHERE p.postVisiblity = true
         AND p.userpost.statusPrivate = false
         AND p.userpost.statusDeleted = false

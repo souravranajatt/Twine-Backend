@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.loginapp.loginapp.DTO.FollowListFetchDTO;
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
@@ -65,7 +66,7 @@ public class ProfileService {
         this.authUtils = authUtils;
     }
 
-    // Fetch search profile securely using projection
+    // Fetch search profile securely 
     public SearchUserResponse userProfile(String username) {
 
         // 1️⃣ Get logged-in user
@@ -112,8 +113,15 @@ public class ProfileService {
             if (data.getTimeUser() != null) {
                 usersRepo.findByUserId(data.getTimeUser()).ifPresent(timelineUser -> {
                     if (!timelineUser.isStatusDeleted()) {
-                        res.setSearchUserTimeline(timelineUser.getFullname());
+                        boolean blockedbyme = blockRepo.existsByBlockerAndBlocked(loggedUser, timelineUser);
+                        boolean blockedme = blockRepo.existsByBlockerAndBlocked(timelineUser, loggedUser);
+                        if(blockedbyme || blockedme){
+                            res.setSearchUserTimeline(null);
+                        }else{
+                            res.setSearchUserTimeline(timelineUser.getFullname());
+                        }
                     }
+                    
                 });
             }
         }
@@ -254,7 +262,7 @@ public class ProfileService {
             // Set Post Settings
 
             dto.setCommentEnable(post.getCommentEnabled());
-            dto.setLikeHide(post.getLikeVisible());
+            dto.setLikeVisible(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
 
             // Set Like Flag
@@ -367,7 +375,7 @@ public class ProfileService {
             dto.setViewCount(post.getViewCount());
 
             dto.setCommentEnable(post.getCommentEnabled());
-            dto.setLikeHide(post.getLikeVisible());
+            dto.setLikeVisible(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
 
             // Set Like Flag
@@ -483,7 +491,7 @@ public class ProfileService {
             dto.setViewCount(post.getViewCount());
 
             dto.setCommentEnable(post.getCommentEnabled());
-            dto.setLikeHide(post.getLikeVisible());
+            dto.setLikeVisible(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
 
             // Set Like Flag
@@ -494,6 +502,80 @@ public class ProfileService {
         }
 
         return postsList;
+    }
+
+    // Fetch Follower List with pagination
+    public List<FollowListFetchDTO> followerListFetch(Long targetUserId, int page) {
+
+        // Get logged-in user
+        Users userOne = authUtils.getLoggedUser();
+
+        // Target user
+        Users userTwo = usersRepo.findByUserId(targetUserId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        // Check if target user is soft deleted/deactivated
+        if (userTwo.isStatusDeleted()) {
+            throw new IllegalArgumentException("User is not available!");
+        }
+
+        // Check block relationship
+        boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo)
+                || blockRepo.existsByBlockerAndBlocked(userTwo, userOne);
+        if (isBlocked) {
+            throw new IllegalArgumentException("Invalid Action!");
+        }
+
+        // Privacy check
+        if (userTwo.isStatusPrivate() && !userOne.getUserId().equals(userTwo.getUserId())) {
+            boolean isFollowing = followRepo.existsByFollowerAndFollowing(userOne, userTwo);
+            if (!isFollowing && !userOne.getUserId().equals(targetUserId)) {
+                throw new IllegalArgumentException("This account is private!");
+            }
+        }
+
+        // Fetch followers
+        Pageable pageable = PageRequest.of(page, 15);
+        List<Users> followers = followRepo.findFollowerUsers(userTwo, pageable);
+        if (followers.isEmpty()) return Collections.emptyList();
+
+        // Block IDs batch fetch
+        Set<Long> iBlocked = blockRepo.findBlockedUserIds(userOne);
+        Set<Long> blockedMe = blockRepo.findBlockedByUserIds(userOne);
+
+        // Filter blocked users
+        List<Users> filteredFollowers = followers.stream()
+                .filter(f -> !iBlocked.contains(f.getUserId()) 
+                        && !blockedMe.contains(f.getUserId()))
+                .toList();
+
+        if (filteredFollowers.isEmpty()) return Collections.emptyList();
+
+        // Batch fetch follow relations
+        List<Long> followerIds = filteredFollowers.stream()
+                .map(Users::getUserId)
+                .toList();
+
+        Set<Long> theyFollowMe = followRepo.findFollowerIds(userOne, followerIds);
+        Set<Long> iFollowThem = followRepo.findFollowingIds(userOne, followerIds);
+
+        // DTO Convert
+        List<FollowListFetchDTO> fetchList = new ArrayList<>();
+        for (Users follower : filteredFollowers) {
+            FollowListFetchDTO dto = new FollowListFetchDTO();
+            dto.setUserId(String.valueOf(follower.getUserId()));
+            dto.setUsername(follower.getUsername());
+            dto.setVerify(follower.isVerifyTag());
+            if (follower.getUserData() != null && follower.getUserData().getProfilePhoto() != null) {
+                dto.setProfilePicture(follower.getUserData().getProfilePhoto());
+            }
+            dto.setFollowsYou(theyFollowMe.contains(follower.getUserId()));
+            dto.setFollowedByMe(iFollowThem.contains(follower.getUserId()));
+            dto.setIsMe(follower.getUserId().equals(userOne.getUserId()));
+            fetchList.add(dto);
+        }
+
+        return fetchList;
     }
 
     // Fetch Logged User Data 

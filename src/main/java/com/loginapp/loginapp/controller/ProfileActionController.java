@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 
+
 @RestController
 @RequestMapping("/api/v1")
 public class ProfileActionController {
@@ -23,7 +24,7 @@ public class ProfileActionController {
     }
 
 
-    // Follow/Unfollow User Endpoint
+    // Follow Endpoint
     @PostMapping("/user/follow/{targetUserId}")
     public ResponseEntity<?> followButtonAction(@PathVariable Long targetUserId){
         try {

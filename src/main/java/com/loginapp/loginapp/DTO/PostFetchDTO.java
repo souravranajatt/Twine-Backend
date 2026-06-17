@@ -26,6 +26,7 @@ public class PostFetchDTO {
     private String fullname;
     private String profileImage;
     private boolean fetchVerified;
+    private boolean privateAccount;
 
     // Post Like and Comment 
     private Long likeCount;
@@ -36,7 +37,7 @@ public class PostFetchDTO {
     // Post Setting 
     private boolean commentEnable;
     private boolean shareEnable;
-    private boolean likeHide;
+    private boolean likeVisible;
 
     // Post Flags
     private boolean likedByCurrentUser;
@@ -181,12 +182,7 @@ public class PostFetchDTO {
     public void setShareEnable(boolean shareEnable) {
         this.shareEnable = shareEnable;
     }
-    public boolean isLikeHide() {
-        return likeHide;
-    }
-    public void setLikeHide(boolean likeHide) {
-        this.likeHide = likeHide;
-    }
+    
     public boolean isLikedByCurrentUser() {
         return likedByCurrentUser;
     }
@@ -198,6 +194,18 @@ public class PostFetchDTO {
     }
     public void setSavedByCurrentUser(boolean savedByCurrentUser) {
         this.savedByCurrentUser = savedByCurrentUser;
+    }
+    public boolean isLikeVisible() {
+        return likeVisible;
+    }
+    public void setLikeVisible(boolean likeVisible) {
+        this.likeVisible = likeVisible;
+    }
+    public boolean isPrivateAccount() {
+        return privateAccount;
+    }
+    public void setPrivateAccount(boolean privateAccount) {
+        this.privateAccount = privateAccount;
     }
     
 }

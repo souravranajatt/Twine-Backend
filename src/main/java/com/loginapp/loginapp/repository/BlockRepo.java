@@ -20,7 +20,8 @@ public interface BlockRepo extends JpaRepository<BlockUser, Long> {
     // Custom query to delete a block relationship between two users
     void deleteByBlockerAndBlocked(Users blocker, Users blocked);
 
-
+    @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user AND b.blocked.statusDeleted = false")
+    List<Users> findActiveBlockedUsers(@Param("user") Users user);
 
     // Get blocked and blocking Ids
     @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user")
@@ -28,4 +29,11 @@ public interface BlockRepo extends JpaRepository<BlockUser, Long> {
 
     @Query("SELECT b.blocker FROM BlockUser b WHERE b.blocked = :user")
     List<Users> findBlockedByUsers(@Param("user") Users user); // Loggeed User Blocked by Others
+
+    // For Follower Fetch 
+    @Query("SELECT b.blocked.userId FROM BlockUser b WHERE b.blocker = :user")
+    Set<Long> findBlockedUserIds(@Param("user") Users user);
+
+    @Query("SELECT b.blocker.userId FROM BlockUser b WHERE b.blocked = :user")
+    Set<Long> findBlockedByUserIds(@Param("user") Users user);
 }

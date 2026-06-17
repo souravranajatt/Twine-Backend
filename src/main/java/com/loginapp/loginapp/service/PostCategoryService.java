@@ -26,7 +26,6 @@ public class PostCategoryService {
         this.postRepo = postRepo;
     }
 
-    @Transactional
     public void saveCategory(Long postId, PostCategoryDTO dto) {
         try {
             PostsEntity freshPost = postRepo.findById(postId)
@@ -53,7 +52,6 @@ public class PostCategoryService {
         }
     }
 
-    // New Method 
     private String toJsonArray(List<String> list) {
         if (list == null || list.isEmpty()) return "[]";
         StringBuilder sb = new StringBuilder("[");

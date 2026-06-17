@@ -5,6 +5,7 @@ import java.util.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.loginapp.loginapp.DTO.FollowListFetchDTO;
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
@@ -88,5 +89,17 @@ public class ProfileController {
         }
     }
 
+    // Follower List Fetch
+    @GetMapping("/profile/{targetUserId}/follower")
+    public ResponseEntity<?> fetchFollowerList(@PathVariable Long targetUserId, @RequestParam(defaultValue = "0") int page) {
+        try {
+            List<FollowListFetchDTO> followers = profileService.followerListFetch(targetUserId, page);
+            return ResponseEntity.ok(followers);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
 
 }

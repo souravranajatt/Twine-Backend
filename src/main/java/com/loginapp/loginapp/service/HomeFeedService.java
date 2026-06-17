@@ -196,7 +196,7 @@ public class HomeFeedService {
             // Settings
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setShareEnable(post.getShareEnabled());
-            dto.setLikeHide(!post.getLikeVisible());
+            dto.setLikeVisible(post.getLikeVisible());
 
             // Posts Media Data
             PostMedia media = post.getPostMedia();

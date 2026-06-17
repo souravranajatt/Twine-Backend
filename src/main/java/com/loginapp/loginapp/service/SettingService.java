@@ -298,7 +298,7 @@ public class SettingService {
         List<BlockedUserFetchDTO> blockedUsers = new ArrayList<>();
 
         // Get All Blocked User List where current user is the blocker
-        List<Users> blockedList = blockRepo.findBlockedUsers(user);
+        List<Users> blockedList = blockRepo.findActiveBlockedUsers(user);
 
         for (Users block : blockedList) {
             BlockedUserFetchDTO dto = new BlockedUserFetchDTO();

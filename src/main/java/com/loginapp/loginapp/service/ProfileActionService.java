@@ -217,6 +217,7 @@ public class ProfileActionService {
         if(userTwo.isStatusDeleted()){
             throw new IllegalArgumentException("User is not available!");   
         }
+        
         // Check both user same or not
         if(userOne.getUserId().equals(userTwo.getUserId())){
             throw new IllegalArgumentException("You can't unblock yourself!");
@@ -250,6 +251,7 @@ public class ProfileActionService {
         if(userTwo.isStatusDeleted()){
             throw new IllegalArgumentException("User is not available!");   
         }
+
         // Check both user same or not
         if(userOne.getUserId().equals(userTwo.getUserId())){
             throw new IllegalArgumentException("You can't send to yourself!");
@@ -345,6 +347,6 @@ public class ProfileActionService {
         request.setAnonymousId(userTwo);
         secretCrushRequestRepo.save(request);
 
-        }
+    }
 
 }

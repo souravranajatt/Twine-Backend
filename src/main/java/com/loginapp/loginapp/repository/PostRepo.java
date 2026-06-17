@@ -9,6 +9,8 @@ import java.util.*;
 import com.loginapp.loginapp.entity.Users;
 
 import com.loginapp.loginapp.entity.PostsEntity;
+import java.util.List;
+
 
 public interface PostRepo extends JpaRepository<PostsEntity, Long> {
         
@@ -23,6 +25,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
         @Query("""
                 SELECT p FROM PostsEntity p
                 LEFT JOIN FETCH p.postMedia
+                JOIN FETCH p.userpost
                 WHERE p.userpost=:user
                 AND p.postVisiblity = true
                 And p.userpost.statusDeleted = false
@@ -33,6 +36,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
         @Query("""
                 SELECT p FROM PostsEntity p
                 LEFT JOIN FETCH p.postMedia
+                JOIN FETCH p.userpost
                 WHERE p.timelineUser=:userid
                 AND p.userpost.userId = :tuserid
                 AND p.postVisiblity = true
@@ -44,6 +48,7 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
         @Query("""
                 SELECT p FROM PostsEntity p
                 LEFT JOIN FETCH p.postMedia
+                JOIN FETCH p.userpost
                 WHERE :username MEMBER OF p.taggedUsers
                 AND p.postVisiblity = true
                 AND p.userpost.statusDeleted = false
@@ -51,4 +56,15 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 ORDER BY p.uploadAt DESC
                 """)
         List<PostsEntity> findTaggedPosts(@Param("username") String username, Pageable page);
+
+        @Query("""
+                SELECT p FROM PostsEntity p
+                JOIN FETCH p.userpost
+                LEFT JOIN FETCH p.postMedia
+                WHERE p.postId = :postId
+                AND p.userpost.statusDeleted = false
+                AND p.postVisiblity = true
+                        """)
+        PostsEntity findSpecificPost(@Param("postId") Long postId);
+        
 }

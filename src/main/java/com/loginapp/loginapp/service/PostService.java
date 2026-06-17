@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
 import com.loginapp.loginapp.Utils.AuthUtils;
@@ -19,8 +20,12 @@ import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.Users;
+import com.loginapp.loginapp.repository.BlockRepo;
+import com.loginapp.loginapp.repository.FollowRepo;
+import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
+import com.loginapp.loginapp.repository.SavedPostRepo;
 
 import net.coobird.thumbnailator.Thumbnails;
 
@@ -41,14 +46,36 @@ public class PostService {
 
     private final PostCategoryDetection postCategoryDetection;
 
-    private final CloudinaryService cloudinaryService;    
+    private final CloudinaryService cloudinaryService;   
+    
+    private final FollowRepo followRepo;
 
-    PostService(PostRepo postRepo, AuthUtils authUtils, PostMediaRepo postMediaRepo, PostCategoryDetection postCategoryDetection, CloudinaryService cloudinaryService) {
+    private final BlockRepo blockRepo;
+
+    private final PostLikeRepo postLikeRepo;
+
+    private final SavedPostRepo savedPostRepo;
+
+    PostService(
+        PostRepo postRepo,
+        AuthUtils authUtils,
+        PostMediaRepo postMediaRepo,
+        PostCategoryDetection postCategoryDetection,
+        CloudinaryService cloudinaryService,
+        FollowRepo followRepo,
+        BlockRepo blockRepo,
+        PostLikeRepo postLikeRepo,
+        SavedPostRepo savedPostRepo
+    ) {
         this.postRepo = postRepo;
         this.authUtils = authUtils;
         this.postMediaRepo = postMediaRepo;
         this.postCategoryDetection = postCategoryDetection;
         this.cloudinaryService = cloudinaryService;
+        this.followRepo = followRepo;
+        this.blockRepo = blockRepo;
+        this.postLikeRepo = postLikeRepo;
+        this.savedPostRepo = savedPostRepo;
     }
 
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
@@ -169,4 +196,89 @@ public class PostService {
         response.setMessage("Post Uploaded!");
         return response;
     }
+
+
+    // Fetch Post 
+    public PostFetchDTO fetchPost(Long postId) {
+
+        // Get Logged User
+        Users user = authUtils.getLoggedUser();
+
+        // Get Post Details
+        PostsEntity post = postRepo.findSpecificPost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post is no longer available!");
+        }
+
+        Users postOwner = post.getUserpost();
+
+        // If it not own post
+        if (!postOwner.getUserId().equals(user.getUserId())) {
+
+            // Block check — dono side
+            boolean iBlockedThem = blockRepo.existsByBlockerAndBlocked(user, postOwner);
+            boolean theyBlockedMe = blockRepo.existsByBlockerAndBlocked(postOwner, user);
+
+            if (iBlockedThem || theyBlockedMe) {
+                throw new IllegalArgumentException("Post is no longer available!");
+            }
+
+            // Private account check
+            if (postOwner.isStatusPrivate()) {
+                boolean isFollowing = followRepo.existsByFollowerAndFollowing(user, postOwner);
+                if (!isFollowing) {
+                    throw new IllegalArgumentException("This account is private!");
+                }
+            }
+        }
+
+        // Like & Save status
+        boolean isLiked = postLikeRepo.existsByPostAndUser(post, user);
+        boolean isSaved = savedPostRepo.existsByUserAndPost(user, post);
+
+        // DTO Convert
+        PostFetchDTO dto = new PostFetchDTO();
+
+        dto.setFetchPostId(String.valueOf(post.getPostId()));
+        dto.setFetchFileName(post.getFileName());
+        dto.setFetchPostCaption(post.getPostCaption());
+        dto.setFetchPostLocation(post.getPostLocation());
+        dto.setFetchUploadAt(post.getUploadAt());
+
+        // User details
+        dto.setUserId(String.valueOf(postOwner.getUserId()));
+        dto.setUsername(postOwner.getUsername());
+        dto.setFullname(postOwner.getFullname());
+        if (postOwner.getUserData() != null) {
+            dto.setProfileImage(postOwner.getUserData().getProfilePhoto());
+        }
+        dto.setFetchVerified(postOwner.isVerifyTag());
+
+        // Stats
+        dto.setLikeCount(post.getLikeCount());
+        dto.setCommentCount(post.getCommentCount());
+        dto.setViewCount(post.getViewCount());
+        dto.setSaveCount(post.getSaveCount());
+
+        // Settings
+        dto.setCommentEnable(post.getCommentEnabled());
+        dto.setShareEnable(post.getShareEnabled());
+        dto.setLikeVisible(post.getLikeVisible());
+
+        // Media
+        PostMedia media = post.getPostMedia();
+        if (media != null) {
+            dto.setWidth(media.getWidth());
+            dto.setHeight(media.getHeight());
+            dto.setDuration(media.getDuration());
+            dto.setPostType(media.getPostType().name());
+        }
+
+        // Like/Save status
+        dto.setLikedByCurrentUser(isLiked);
+        dto.setSavedByCurrentUser(isSaved);
+
+        return dto;
+    }
+
 }

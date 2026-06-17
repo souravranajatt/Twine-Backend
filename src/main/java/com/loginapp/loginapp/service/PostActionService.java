@@ -1,13 +1,22 @@
 package com.loginapp.loginapp.service;
 
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.loginapp.loginapp.DTO.PostCommentDTO;
+import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostLike;
 import com.loginapp.loginapp.entity.PostSeen;
 import com.loginapp.loginapp.entity.PostsEntity;
@@ -17,12 +26,15 @@ import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.PostSeenRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
+import com.loginapp.loginapp.repository.PostCommentRepo;
 
 @Service
 @Transactional
 public class PostActionService {
 
     // Inject Other Files thorugh constructor
+
+    private final PostCommentRepo postCommentRepo;
 
     private final AuthUtils authUtils;
 
@@ -36,13 +48,14 @@ public class PostActionService {
 
     private final PostSeenRepo postSeenRepo;
 
-    PostActionService(AuthUtils authUtils, AffinityService affinityService, PostRepo postRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, PostSeenRepo postSeenRepo) {
+    PostActionService(AuthUtils authUtils, AffinityService affinityService, PostRepo postRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, PostSeenRepo postSeenRepo, PostCommentRepo postCommentRepo) {
         this.authUtils = authUtils;
         this.affinityService = affinityService;
         this.postRepo = postRepo;
         this.postLikeRepo = postLikeRepo;
         this.savedPostRepo = savedPostRepo;
         this.postSeenRepo = postSeenRepo;
+        this.postCommentRepo = postCommentRepo;
     }
 
     // Like a Post
@@ -234,6 +247,103 @@ public class PostActionService {
             affinityService.updateAffinityOnView(loggedUser, post);
         }
     }
+
+    // Comment a Post 
+    public void commentPost(Long postId, PostCommentDTO commentDTO){
+
+        // Get logged user details from security context
+        Users loggedUser = authUtils.getLoggedUser();
+
+        // Get post details using postId
+        PostsEntity post = postRepo.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found!"));    
+
+        // check post is archive or not
+        if(!post.getPostVisiblity()){
+            throw new IllegalArgumentException("Post not found!");
+        }
+
+        if(!post.getCommentEnabled()){
+            throw new IllegalArgumentException("Comment are disabled!");
+        }
+
+        PostComment newComment = new PostComment();
+        newComment.setCommentText(commentDTO.getCommentText());
+        newComment.setPost(post);
+        newComment.setUser(loggedUser);
+
+        if(commentDTO.getParentId() != null){
+            PostComment parentComment = postCommentRepo.findById(commentDTO.getParentId())
+                .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
+            newComment.setParentId(parentComment);
+
+            parentComment.setReplyCount(parentComment.getReplyCount() + 1);
+            postCommentRepo.save(parentComment);
+        }
+
+        postCommentRepo.save(newComment);
+
+        // Increase Comment Count
+        post.setCommentCount(post.getCommentCount()+1);
+        postRepo.save(post);
+        
+
+    }
+
+    // Fetch Comment of a Specific Post
+    public List<PostCommentFetchDTO> fetchComment(Long postId, int page) {
+
+        // 1. Logged User
+        Users loggedUser = authUtils.getLoggedUser();
+
+        // 2. Post check
+        PostsEntity post = postRepo.findById(postId)
+            .orElseThrow(() -> new IllegalArgumentException("Post not found!"));
+
+        if(!post.getPostVisiblity()){
+            throw new IllegalArgumentException("Post not found!");
+        }
+
+        // 3. Comments fetch
+        Pageable pageable = PageRequest.of(page, 20);
+        List<PostComment> comments = postCommentRepo
+            .findCommentsByPost(postId, pageable);
+
+        if(comments.isEmpty()) return Collections.emptyList();
+
+        // 4. DTO Convert
+        List<PostCommentFetchDTO> dtoList = new ArrayList<>();
+        for(PostComment comment : comments){
+
+            PostCommentFetchDTO dto = new PostCommentFetchDTO();
+
+            // Comment details
+            dto.setCommentId(comment.getCommentId());
+            dto.setCommentText(comment.getCommentText());
+            dto.setCreatedAt(comment.getCreatedAt());
+            dto.setLikeCount(comment.getLikeCount());
+            dto.setReplyCount(comment.getReplyCount());
+
+            // Parent ID
+            if(comment.getParentId() != null){
+                dto.setParentId(comment.getParentId().getCommentId());
+            }
+
+            // User details
+            Users user = comment.getUser();
+            dto.setUserId(String.valueOf(user.getUserId()));
+            dto.setUsername(user.getUsername());
+            dto.setFetchVerified(user.isVerifyTag());
+            if(user.getUserData() != null){
+                dto.setProfileImage(user.getUserData().getProfilePhoto());
+            }
+
+            dtoList.add(dto);
+        }
+
+        return dtoList;
+    }
+
 
     
 }
