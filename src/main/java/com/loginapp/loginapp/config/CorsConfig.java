@@ -20,7 +20,8 @@ public class CorsConfig {
                                 "http://localhost:3000",
                                 "http://twine-frontend",
                                 "http://twine-frontend:80",
-                                "http://127.0.0.1:3000"
+                                "http://127.0.0.1:3000",
+                                "https://twine-frontend-production.up.railway.app"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
