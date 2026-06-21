@@ -1,7 +1,6 @@
 package com.loginapp.loginapp.Utils;
 
 import org.springframework.stereotype.Component;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.UsersRepo;
@@ -9,14 +8,24 @@ import com.loginapp.loginapp.repository.UsersRepo;
 @Component
 public class AuthUtils {
 
-    @Autowired
-    private UsersRepo usersRepo;
+    private final UsersRepo usersRepo;
+
+    AuthUtils(UsersRepo usersRepo) {
+        this.usersRepo = usersRepo;
+    }
 
     public Users getLoggedUser() {
         String userIdStr = SecurityContextHolder.getContext()
-                            .getAuthentication().getName();
+                                .getAuthentication().getName();
         Long userUid = Long.parseLong(userIdStr);
-        return usersRepo.findByUserId(userUid)
+
+        Users user = usersRepo.findByUserId(userUid)
                 .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));
+
+        if (user.isStatusDeleted()) {
+            throw new IllegalArgumentException("Something went wrong!");
+        }
+
+        return user;
     }
 }

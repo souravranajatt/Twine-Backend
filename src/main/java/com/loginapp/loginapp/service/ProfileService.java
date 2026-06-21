@@ -148,6 +148,7 @@ public class ProfileService {
             res.setFollowReqOptStatus(false);
             res.setCrushStatus(false);
             res.setCrushSentStatus(false);
+            res.setBlockedStatus(false);
         } else {
             res.setFollowingStatus(isFollowing);
             res.setFollowerStatus(followRepo.existsByFollower_UserIdAndFollowing_UserId(user.getUserId(), loggedUser.getUserId()));
@@ -253,17 +254,16 @@ public class ProfileService {
             }
 
             // Set Counts
-            
             dto.setCommentCount(post.getCommentCount());
             dto.setLikeCount(post.getLikeCount());
             dto.setSaveCount(post.getSaveCount());
             dto.setViewCount(post.getViewCount());
 
             // Set Post Settings
-
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeVisible(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
+            dto.setOwnPost(post.getUserpost().getUserId().equals(loggedUser.getUserId()));
 
             // Set Like Flag
             dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
@@ -377,6 +377,7 @@ public class ProfileService {
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeVisible(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
+            dto.setOwnPost(post.getUserpost().getUserId().equals(loggedUser.getUserId()));
 
             // Set Like Flag
             dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
@@ -493,6 +494,7 @@ public class ProfileService {
             dto.setCommentEnable(post.getCommentEnabled());
             dto.setLikeVisible(post.getLikeVisible());
             dto.setShareEnable(post.getShareEnabled());
+            dto.setOwnPost(post.getUserpost().getUserId().equals(loggedUser.getUserId()));
 
             // Set Like Flag
             dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));

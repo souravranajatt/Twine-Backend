@@ -211,14 +211,14 @@ public class PostService {
         }
 
         Users postOwner = post.getUserpost();
+        boolean isPrivateAccount = false;
 
-        // If it not own post
+        // If not own post
         if (!postOwner.getUserId().equals(user.getUserId())) {
 
-            // Block check — dono side
+            // Block check on both side
             boolean iBlockedThem = blockRepo.existsByBlockerAndBlocked(user, postOwner);
             boolean theyBlockedMe = blockRepo.existsByBlockerAndBlocked(postOwner, user);
-
             if (iBlockedThem || theyBlockedMe) {
                 throw new IllegalArgumentException("Post is no longer available!");
             }
@@ -227,32 +227,37 @@ public class PostService {
             if (postOwner.isStatusPrivate()) {
                 boolean isFollowing = followRepo.existsByFollowerAndFollowing(user, postOwner);
                 if (!isFollowing) {
-                    throw new IllegalArgumentException("This account is private!");
+                    isPrivateAccount = true;
                 }
             }
+        }
+
+        PostFetchDTO dto = new PostFetchDTO();
+
+        // DTO Conversion
+        dto.setUserId(String.valueOf(postOwner.getUserId()));
+        dto.setUsername(postOwner.getUsername());
+        dto.setFetchVerified(postOwner.isVerifyTag());
+        dto.setPrivateAccount(isPrivateAccount);
+        if (postOwner.getUserData() != null) {
+            dto.setProfileImage(postOwner.getUserData().getProfilePhoto());
+        }
+
+        if (isPrivateAccount) {
+            return dto;
         }
 
         // Like & Save status
         boolean isLiked = postLikeRepo.existsByPostAndUser(post, user);
         boolean isSaved = savedPostRepo.existsByUserAndPost(user, post);
 
-        // DTO Convert
-        PostFetchDTO dto = new PostFetchDTO();
-
+        // Post details
         dto.setFetchPostId(String.valueOf(post.getPostId()));
         dto.setFetchFileName(post.getFileName());
         dto.setFetchPostCaption(post.getPostCaption());
         dto.setFetchPostLocation(post.getPostLocation());
         dto.setFetchUploadAt(post.getUploadAt());
-
-        // User details
-        dto.setUserId(String.valueOf(postOwner.getUserId()));
-        dto.setUsername(postOwner.getUsername());
         dto.setFullname(postOwner.getFullname());
-        if (postOwner.getUserData() != null) {
-            dto.setProfileImage(postOwner.getUserData().getProfilePhoto());
-        }
-        dto.setFetchVerified(postOwner.isVerifyTag());
 
         // Stats
         dto.setLikeCount(post.getLikeCount());
@@ -264,6 +269,7 @@ public class PostService {
         dto.setCommentEnable(post.getCommentEnabled());
         dto.setShareEnable(post.getShareEnabled());
         dto.setLikeVisible(post.getLikeVisible());
+        dto.setOwnPost(post.getUserpost().getUserId().equals(user.getUserId()));
 
         // Media
         PostMedia media = post.getPostMedia();

@@ -38,10 +38,12 @@ public class PostFetchDTO {
     private boolean commentEnable;
     private boolean shareEnable;
     private boolean likeVisible;
+    private boolean postVisible;
 
     // Post Flags
     private boolean likedByCurrentUser;
     private boolean savedByCurrentUser;
+    private boolean ownPost;
 
     
 
@@ -207,5 +209,12 @@ public class PostFetchDTO {
     public void setPrivateAccount(boolean privateAccount) {
         this.privateAccount = privateAccount;
     }
+    public boolean isOwnPost() {
+        return ownPost;
+    }
+    public void setOwnPost(boolean ownPost) {
+        this.ownPost = ownPost;
+    }
+    
     
 }

@@ -4,8 +4,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.*;
 import com.loginapp.loginapp.entity.Users;
 
 import com.loginapp.loginapp.entity.PostsEntity;
@@ -66,5 +64,14 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 AND p.postVisiblity = true
                         """)
         PostsEntity findSpecificPost(@Param("postId") Long postId);
+
+        @Query("""
+                SELECT p FROM PostsEntity p
+                JOIN FETCH p.userpost
+                WHERE p.postId = :postId
+                AND p.userpost.statusDeleted = false
+                AND p.postVisiblity = true
+                        """)
+        PostsEntity findActivePost(@Param("postId") Long postId);
         
 }
