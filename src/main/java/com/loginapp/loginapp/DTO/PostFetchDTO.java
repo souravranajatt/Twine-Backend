@@ -38,7 +38,6 @@ public class PostFetchDTO {
     private boolean commentEnable;
     private boolean shareEnable;
     private boolean likeVisible;
-    private boolean postVisible;
 
     // Post Flags
     private boolean likedByCurrentUser;

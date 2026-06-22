@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public class PostCommentFetchDTO {
 
     // 1. Comment Details
-    private Long commentId;
+    private String commentId;
     private String commentText;
     private LocalDateTime createdAt;
     
@@ -16,7 +16,7 @@ public class PostCommentFetchDTO {
     private boolean fetchVerified;
     
     // 3. Threading & Action Details (For nested replies and likes)
-    private Long parentId;      
+    private String parentId;      
     private Long replyCount;     
     private Long likeCount;      
     private boolean likedByCurrentUser; 
@@ -25,10 +25,10 @@ public class PostCommentFetchDTO {
     // Getters and Setters ...
 
 
-    public Long getCommentId() {
+    public String getCommentId() {
         return commentId;
     }
-    public void setCommentId(Long commentId) {
+    public void setCommentId(String commentId) {
         this.commentId = commentId;
     }
     public String getCommentText() {
@@ -67,10 +67,10 @@ public class PostCommentFetchDTO {
     public void setFetchVerified(boolean fetchVerified) {
         this.fetchVerified = fetchVerified;
     }
-    public Long getParentId() {
+    public String getParentId() {
         return parentId;
     }
-    public void setParentId(Long parentId) {
+    public void setParentId(String parentId) {
         this.parentId = parentId;
     }
     public Long getReplyCount() {

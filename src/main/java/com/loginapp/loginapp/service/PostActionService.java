@@ -206,7 +206,8 @@ public class PostActionService {
         newComment.setUser(loggedUser);
 
         if (commentDTO.getParentId() != null) {
-            PostComment parentComment = postCommentRepo.findById(commentDTO.getParentId())
+            Long parentid = Long.parseLong(commentDTO.getParentId());
+            PostComment parentComment = postCommentRepo.findById(parentid)
                 .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
             newComment.setParentId(parentComment);
 
@@ -238,14 +239,14 @@ public class PostActionService {
         for (PostComment comment : comments) {
             PostCommentFetchDTO dto = new PostCommentFetchDTO();
 
-            dto.setCommentId(comment.getCommentId());
+            dto.setCommentId(String.valueOf(comment.getCommentId()));
             dto.setCommentText(comment.getCommentText());
             dto.setCreatedAt(comment.getCreatedAt());
             dto.setLikeCount(comment.getLikeCount());
             dto.setReplyCount(comment.getReplyCount());
 
             if (comment.getParentId() != null) {
-                dto.setParentId(comment.getParentId().getCommentId());
+                dto.setParentId(String.valueOf(comment.getParentId().getCommentId()));
             }
 
             Users user = comment.getUser();

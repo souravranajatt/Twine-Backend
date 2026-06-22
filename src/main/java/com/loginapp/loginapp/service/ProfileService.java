@@ -596,9 +596,10 @@ public class ProfileService {
 
         // Set Data to DTO elements 
         LoggedUserResponse resData = new LoggedUserResponse();
-        resData.setUserUid(finalUser.getUserId());
+        resData.setUserUid(String.valueOf(finalUser.getUserId()));
         resData.setFullName(finalUser.getFullname());
         resData.setUserName(finalUser.getUsername());
+        resData.setVerify(finalUser.isVerifyTag());
 
         // Get Data from Other Entity which connected to Users
         UserData userData = finalUser.getUserData();
@@ -609,7 +610,12 @@ public class ProfileService {
             resData.setuLink(userData.getUserlink());
             resData.setuLocation(userData.getUserLocation());
             resData.setuBadge(userData.getBadge());
-            resData.setuTimeline(userData.getTimeUser());
+            if(userData.getTimeUser() != null){
+                resData.setuTimeline(true);
+            }else{
+                resData.setuTimeline(false);
+            }
+            
         }
 
         return resData;

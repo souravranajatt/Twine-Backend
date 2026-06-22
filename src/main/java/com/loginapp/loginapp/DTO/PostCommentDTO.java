@@ -2,13 +2,13 @@ package com.loginapp.loginapp.DTO;
 
 public class PostCommentDTO {
     
-    private Long parentId;
+    private String parentId;
     private String commentText;
 
-    public Long getParentId() {
+    public String getParentId() {
         return parentId;
     }
-    public void setParentId(Long parentId) {
+    public void setParentId(String parentId) {
         this.parentId = parentId;
     }
     public String getCommentText() {

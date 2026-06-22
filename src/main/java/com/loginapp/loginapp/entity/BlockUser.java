@@ -7,6 +7,7 @@ import org.hibernate.annotations.GenericGenerator;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -31,11 +32,11 @@ public class BlockUser {
     @Column(name = "blockId", nullable = false, unique = true)
     private Long blockId;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blocker_id", nullable = false)
     private Users blocker;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blocked_id", nullable = false)
     private Users blocked;
 
