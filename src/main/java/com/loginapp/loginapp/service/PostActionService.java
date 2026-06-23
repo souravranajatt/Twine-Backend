@@ -205,7 +205,7 @@ public class PostActionService {
         newComment.setPost(post);
         newComment.setUser(loggedUser);
 
-        if (commentDTO.getParentId() != null) {
+        if (commentDTO.getParentId() != null || commentDTO.getParentId() != "") {
             Long parentid = Long.parseLong(commentDTO.getParentId());
             PostComment parentComment = postCommentRepo.findById(parentid)
                 .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
