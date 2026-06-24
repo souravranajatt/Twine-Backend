@@ -15,7 +15,7 @@ public class PostCommentFetchDTO {
     private String profileImage;
     private boolean fetchVerified;
     
-    // 3. Threading & Action Details (For nested replies and likes)
+    // 3. Threading & Action Details
     private String parentId;      
     private Long replyCount;     
     private Long likeCount;      

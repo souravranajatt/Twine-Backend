@@ -1,19 +1,19 @@
 package com.loginapp.loginapp.controller;
 
-import java.util.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.loginapp.loginapp.DTO.PostCommentDTO;
-import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.service.PostActionService;
 import org.springframework.web.bind.annotation.RequestBody;
+
 
 
 @RestController
@@ -106,22 +106,19 @@ public class PostActionController {
         }
     }
 
-
-    // Comment Fetch Endpoint
-    @GetMapping("/{postId}/comments")
-    public ResponseEntity<?> fetchComments(
-        @PathVariable Long postId,
-        @RequestParam(defaultValue = "0") int page
-    ) {
+    // Archive a post
+    @PutMapping("/{postId}/archive")
+    public ResponseEntity<?> archivePost(@PathVariable Long postId) {
         try {
-            List<PostCommentFetchDTO> comments = postActionService.fetchComment(postId, page);
-            return ResponseEntity.ok(comments);
+            postActionService.archivePost(postId);
+            return ResponseEntity.ok("Archived");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Internal server error");
+        }catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage()); // 403 not 400
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("An error occurred while updating..");
         }
     }
-    
 
 }

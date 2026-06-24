@@ -4,24 +4,31 @@ import org.mp4parser.IsoFile;
 import java.io.ByteArrayInputStream;
 import java.nio.channels.Channels;
 import java.awt.image.BufferedImage;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
+import com.loginapp.loginapp.DTO.PostCommentDTO;
+
+import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
+import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
+import com.loginapp.loginapp.repository.PostCommentRepo;
 import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
@@ -56,6 +63,8 @@ public class PostService {
 
     private final SavedPostRepo savedPostRepo;
 
+    private final PostCommentRepo postCommentRepo;
+
     PostService(
         PostRepo postRepo,
         AuthUtils authUtils,
@@ -65,7 +74,8 @@ public class PostService {
         FollowRepo followRepo,
         BlockRepo blockRepo,
         PostLikeRepo postLikeRepo,
-        SavedPostRepo savedPostRepo
+        SavedPostRepo savedPostRepo,
+        PostCommentRepo postCommentRepo
     ) {
         this.postRepo = postRepo;
         this.authUtils = authUtils;
@@ -76,6 +86,7 @@ public class PostService {
         this.blockRepo = blockRepo;
         this.postLikeRepo = postLikeRepo;
         this.savedPostRepo = savedPostRepo;
+        this.postCommentRepo = postCommentRepo;
     }
 
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
@@ -198,6 +209,9 @@ public class PostService {
     }
 
 
+    // ******************** POST RELATED CONTENT FETCHING ************************
+
+
     // Fetch Post 
     public PostFetchDTO fetchPost(Long postId) {
 
@@ -285,6 +299,82 @@ public class PostService {
         dto.setSavedByCurrentUser(isSaved);
 
         return dto;
+    }
+
+    // Fetch Comment of a Specific Post
+    public List<PostCommentFetchDTO> fetchComment(Long postId, int page) {
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        Pageable pageable = PageRequest.of(page, 15);
+        List<PostComment> comments = postCommentRepo.findCommentsByPost(postId, pageable);
+
+        if (comments.isEmpty()) return Collections.emptyList();
+
+        List<PostCommentFetchDTO> dtoList = new ArrayList<>();
+        for (PostComment comment : comments) {
+            PostCommentFetchDTO dto = new PostCommentFetchDTO();
+
+            dto.setCommentId(String.valueOf(comment.getCommentId()));
+            dto.setCommentText(comment.getCommentText());
+            dto.setCreatedAt(comment.getCreatedAt());
+            dto.setLikeCount(comment.getLikeCount());
+            dto.setReplyCount(comment.getReplyCount());
+
+            if (comment.getParentId() != null) {
+                dto.setParentId(String.valueOf(comment.getParentId().getCommentId()));
+            }
+
+            Users user = comment.getUser();
+            dto.setUserId(String.valueOf(user.getUserId()));
+            dto.setUsername(user.getUsername());
+            dto.setFetchVerified(user.isVerifyTag());
+            if (user.getUserData() != null) {
+                dto.setProfileImage(user.getUserData().getProfilePhoto());
+            }
+
+            dtoList.add(dto);
+        }
+
+        return dtoList;
+    }
+
+    // Comment a Post 
+    public void commentPost(Long postId, PostCommentDTO commentDTO) {
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if (!post.getCommentEnabled()) {
+            throw new IllegalArgumentException("Comment are disabled!");
+        }
+
+        PostComment newComment = new PostComment();
+        newComment.setCommentText(commentDTO.getCommentText());
+        newComment.setPost(post);
+        newComment.setUser(loggedUser);
+
+        if (commentDTO.getParentId() != null && !commentDTO.getParentId().isEmpty()) {
+            Long parentid = Long.parseLong(commentDTO.getParentId());
+            PostComment parentComment = postCommentRepo.findById(parentid)
+                .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
+            newComment.setParentId(parentComment);
+
+            parentComment.setReplyCount(parentComment.getReplyCount() + 1);
+            postCommentRepo.save(parentComment);
+        }
+
+        postCommentRepo.save(newComment);
+
+        post.setCommentCount(post.getCommentCount() + 1);
+        postRepo.save(post);
     }
 
 }

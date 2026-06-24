@@ -32,7 +32,7 @@ public class PostsEntity {
     @Column(name = "post_caption", length = 1000)
     private String postCaption;
 
-    @Column(name = "post_visiblity")
+    @Column(name = "post_visiblity", updatable = true)
     private Boolean postVisiblity = true;
     
     @ElementCollection(fetch = FetchType.EAGER)

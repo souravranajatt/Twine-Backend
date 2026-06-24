@@ -2,18 +2,12 @@ package com.loginapp.loginapp.service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostCommentDTO;
-import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostLike;
@@ -205,7 +199,7 @@ public class PostActionService {
         newComment.setPost(post);
         newComment.setUser(loggedUser);
 
-        if (commentDTO.getParentId() != null || commentDTO.getParentId() != "") {
+        if (commentDTO.getParentId() != null && !commentDTO.getParentId().trim().isEmpty()) {
             Long parentid = Long.parseLong(commentDTO.getParentId());
             PostComment parentComment = postCommentRepo.findById(parentid)
                 .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
@@ -215,14 +209,16 @@ public class PostActionService {
             postCommentRepo.save(parentComment);
         }
 
+
         postCommentRepo.save(newComment);
 
         post.setCommentCount(post.getCommentCount() + 1);
         postRepo.save(post);
-    }
+    } 
 
-    // Fetch Comment of a Specific Post
-    public List<PostCommentFetchDTO> fetchComment(Long postId, int page) {
+    // Archive a post
+    public void archivePost(Long postId){
+
         Users loggedUser = authUtils.getLoggedUser();
 
         PostsEntity post = postRepo.findActivePost(postId);
@@ -230,36 +226,18 @@ public class PostActionService {
             throw new IllegalArgumentException("Post no longer available!");
         }
 
-        Pageable pageable = PageRequest.of(page, 15);
-        List<PostComment> comments = postCommentRepo.findCommentsByPost(postId, pageable);
-
-        if (comments.isEmpty()) return Collections.emptyList();
-
-        List<PostCommentFetchDTO> dtoList = new ArrayList<>();
-        for (PostComment comment : comments) {
-            PostCommentFetchDTO dto = new PostCommentFetchDTO();
-
-            dto.setCommentId(String.valueOf(comment.getCommentId()));
-            dto.setCommentText(comment.getCommentText());
-            dto.setCreatedAt(comment.getCreatedAt());
-            dto.setLikeCount(comment.getLikeCount());
-            dto.setReplyCount(comment.getReplyCount());
-
-            if (comment.getParentId() != null) {
-                dto.setParentId(String.valueOf(comment.getParentId().getCommentId()));
-            }
-
-            Users user = comment.getUser();
-            dto.setUserId(String.valueOf(user.getUserId()));
-            dto.setUsername(user.getUsername());
-            dto.setFetchVerified(user.isVerifyTag());
-            if (user.getUserData() != null) {
-                dto.setProfileImage(user.getUserData().getProfilePhoto());
-            }
-
-            dtoList.add(dto);
+        if(!post.getPostVisiblity()){
+            throw new IllegalArgumentException("Post already archived!");
         }
 
-        return dtoList;
+        if (!post.getUserpost().getUserId().equals(loggedUser.getUserId())) {
+            throw new IllegalArgumentException("Invalid action!");
+        }
+
+        // Archive post 
+        post.setPostVisiblity(false);
+        postRepo.save(post);
+
     }
+
 }

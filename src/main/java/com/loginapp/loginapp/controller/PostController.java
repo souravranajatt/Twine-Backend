@@ -1,11 +1,14 @@
 package com.loginapp.loginapp.controller;
 
 import java.io.IOException;
+import java.util.*;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
@@ -28,7 +31,7 @@ public class PostController {
     }
 
     // Upload Post 
-    @PostMapping("/uploadpost")
+    @PostMapping("/upload")
     public ResponseEntity<PostUploadResponse> postUploadLive(@ModelAttribute PostUploadRequest postUploadRequest) {
         try{
             PostUploadResponse finalRes = postService.uploadPost(postUploadRequest);
@@ -52,6 +55,22 @@ public class PostController {
             return ResponseEntity.ok(post);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Comment Fetch Endpoint
+    @GetMapping("/{postId}/comments")
+    public ResponseEntity<?> fetchComments(
+        @PathVariable Long postId,
+        @RequestParam(defaultValue = "0") int page
+    ) {
+        try {
+            List<PostCommentFetchDTO> comments = postService.fetchComment(postId, page);
+            return ResponseEntity.ok(comments);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Internal server error");
         }
