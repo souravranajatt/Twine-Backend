@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -55,8 +56,8 @@ public class SettingController {
         }
     }
 
-    // Privacy Status Update End Point
-    @PutMapping("/setting/privacy/private/update")
+    // Private Account Update End Point
+    @PatchMapping("/setting/privacy/private/update")
     public ResponseEntity<?> profilePrivacyPrivateUpdateSetting(@RequestBody Boolean isPrivate){
         try{
             String result = settingService.updatePrivacyPrivateStatus(isPrivate);
@@ -69,7 +70,7 @@ public class SettingController {
     }
 
     // Account Deactivation End Point
-    @PutMapping("/setting/account/deactivate")
+    @PatchMapping("/setting/account/deactivate")
     public ResponseEntity<?> accountDeactivationSetting(@RequestBody DeactivateRequestDTO deactivateRequestDTO){
         try{
             String result = settingService.deactivateAccount(deactivateRequestDTO);

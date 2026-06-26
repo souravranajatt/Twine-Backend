@@ -5,7 +5,6 @@ public class SettingDataDTO {
     // User Profile Data Fields 
     private String fullname;
     private String username;
-    private String email;
     private String profilePictureUrl;
     private String bio;
     private String location;
@@ -31,14 +30,6 @@ public class SettingDataDTO {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 
     public String getProfilePictureUrl() {

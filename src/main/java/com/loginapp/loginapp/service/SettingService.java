@@ -14,7 +14,6 @@ import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
-import com.loginapp.loginapp.entity.BlockUser;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.repository.UsersRepo;
@@ -79,7 +78,6 @@ public class SettingService {
         SettingDataDTO settingDataDTO = new SettingDataDTO();
         settingDataDTO.setFullname(user.getFullname());
         settingDataDTO.setUsername(user.getUsername());
-        settingDataDTO.setEmail(user.getEmail());
         settingDataDTO.setPrivateAccount(user.isStatusPrivate());
         
         if(user.getUserData() != null){

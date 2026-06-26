@@ -1,14 +1,16 @@
 package com.loginapp.loginapp.Utils;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PasswordHashing {
     
-    @Autowired
-    private BCryptPasswordEncoder encoder;
+    private final BCryptPasswordEncoder encoder;
+
+    PasswordHashing(BCryptPasswordEncoder encoder) {
+        this.encoder = encoder;
+    }
     
     // Hash password with BCrypt
     public String hashPassword(String password) {

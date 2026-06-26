@@ -3,6 +3,7 @@ package com.loginapp.loginapp.repository;
 import java.util.*;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,5 +19,13 @@ public interface PostLikeRepo extends JpaRepository<PostLike, Long> {
     Set<Long> findLikedPostIdsByUserAndPostIds(@Param("user") Users user, @Param("postIds") List<Long> postIds);
 
     Optional<PostLike> findByPostAndUser(PostsEntity post, Users loggedUser);
+
+    // Delete on a specific post
+    @Modifying
+    @Query("""
+            DELETE FROM PostLike pl 
+            WHERE pl.post = :post
+            """)
+    void deleteForSpecificPost(@Param("post") PostsEntity post);
     
 }

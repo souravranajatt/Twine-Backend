@@ -23,7 +23,7 @@ public class CorsConfig {
                                 "http://127.0.0.1:3000",
                                 "https://twine-frontend-production.up.railway.app"
                         )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD")
                         .allowedHeaders("*")
                         .allowCredentials(true);
             }

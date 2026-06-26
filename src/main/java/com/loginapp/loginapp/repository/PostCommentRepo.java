@@ -5,11 +5,13 @@ import java.util.List;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.loginapp.loginapp.entity.PostComment;
+import com.loginapp.loginapp.entity.PostsEntity;
 
 @Repository
 public interface PostCommentRepo extends JpaRepository<PostComment, Long> {
@@ -29,4 +31,11 @@ public interface PostCommentRepo extends JpaRepository<PostComment, Long> {
         Pageable pageable
     );
 
+    // Delete on a specific post
+    @Modifying
+    @Query("""
+            DELETE FROM PostComment pc
+            WHERE pc.post = :post
+            """)
+    void deleteForSpecificPost(@Param("post") PostsEntity post);
 }

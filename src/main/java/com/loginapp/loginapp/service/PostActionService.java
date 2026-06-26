@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import com.loginapp.loginapp.DTO.PostCommentDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
@@ -191,7 +192,11 @@ public class PostActionService {
         }
 
         if (!post.getCommentEnabled()) {
-            throw new IllegalArgumentException("Comment are disabled!");
+            throw new AccessDeniedException("Invalid Actions!");
+        }
+
+        if(commentDTO.getCommentText().length() > 2200){
+            throw new IllegalArgumentException("Caption size can't exceed!");
         }
 
         PostComment newComment = new PostComment();
@@ -226,17 +231,135 @@ public class PostActionService {
             throw new IllegalArgumentException("Post no longer available!");
         }
 
-        if(!post.getPostVisiblity()){
-            throw new IllegalArgumentException("Post already archived!");
+        if (!post.getUserpost().getUserId().equals(loggedUser.getUserId())) {
+            throw new AccessDeniedException("Invalid Actions");
         }
 
-        if (!post.getUserpost().getUserId().equals(loggedUser.getUserId())) {
-            throw new IllegalArgumentException("Invalid action!");
+        if(!post.getPostVisiblity()){
+            throw new IllegalArgumentException("Post already archived!");
         }
 
         // Archive post 
         post.setPostVisiblity(false);
         postRepo.save(post);
+
+    }
+
+    // Hide Likes on a post
+    public void hideLikes(Long postId){
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
+            throw new AccessDeniedException("Invalid Actions");
+        }
+
+        if(!post.getLikeVisible()){
+            throw new IllegalArgumentException("Likes already hidden!");
+        }
+
+        // Hide Likes 
+        post.setLikeVisible(false);
+        postRepo.save(post);
+
+    } 
+
+    // Show Likes on a post
+    public void showLikes(Long postId){
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
+            throw new AccessDeniedException("Invalid Actions");
+        }
+
+        if(post.getLikeVisible()){
+            throw new IllegalArgumentException("Likes already shown!");
+        }
+
+        // Hide Likes 
+        post.setLikeVisible(true);
+        postRepo.save(post);
+
+    } 
+
+    // Disable comments on a post
+    public void disableComments(Long postId){
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
+            throw new AccessDeniedException("Invalid Actions");
+        }
+
+        if(!post.getCommentEnabled()){
+            throw new IllegalArgumentException("Comments already disabled!");
+        }
+
+        // Disable Comments
+        post.setCommentEnabled(false);
+        postRepo.save(post);
+
+    } 
+
+    // Enable comments on a post
+    public void enableComments(Long postId){
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
+            throw new AccessDeniedException("Invalid Actions");
+        }
+
+        if(post.getCommentEnabled()){
+            throw new IllegalArgumentException("Comments already enabled!");
+        }
+
+        // Enable Comments 
+        post.setCommentEnabled(true);
+        postRepo.save(post);
+
+    }
+
+    // Delete a Post
+    public String deletePost(Long postId){
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
+            throw new AccessDeniedException("Invalid Actions");
+        }
+
+        // Delete post comment, save, and like data 
+        postCommentRepo.deleteForSpecificPost(post);
+        savedPostRepo.deleteForSpecificPost(post);
+        postLikeRepo.deleteForSpecificPost(post);
+        postSeenRepo.deleteForSpecificPost(post);
+
+        // Delete Post
+        postRepo.delete(post);
+
+        return "Post Deleted!";
 
     }
 
