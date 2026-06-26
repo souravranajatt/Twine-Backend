@@ -343,38 +343,4 @@ public class PostService {
         return dtoList;
     }
 
-    // Comment a Post 
-    public void commentPost(Long postId, PostCommentDTO commentDTO) {
-        Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if (!post.getCommentEnabled()) {
-            throw new IllegalArgumentException("Comment are disabled!");
-        }
-
-        PostComment newComment = new PostComment();
-        newComment.setCommentText(commentDTO.getCommentText());
-        newComment.setPost(post);
-        newComment.setUser(loggedUser);
-
-        if (commentDTO.getParentId() != null && !commentDTO.getParentId().isEmpty()) {
-            Long parentid = Long.parseLong(commentDTO.getParentId());
-            PostComment parentComment = postCommentRepo.findById(parentid)
-                .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
-            newComment.setParentId(parentComment);
-
-            parentComment.setReplyCount(parentComment.getReplyCount() + 1);
-            postCommentRepo.save(parentComment);
-        }
-
-        postCommentRepo.save(newComment);
-
-        post.setCommentCount(post.getCommentCount() + 1);
-        postRepo.save(post);
-    }
-
 }
