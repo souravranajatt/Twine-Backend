@@ -1,5 +1,6 @@
 package com.loginapp.loginapp.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,9 @@ public class UserController {
 
     private final JwtUtils jwtUtils;
 
+    @Value("${app.secure-cookie}")
+    private boolean secureCookie;
+
     UserController(UserService userService, JwtUtils jwtUtils) {
         this.userService = userService;
         this.jwtUtils = jwtUtils;
@@ -41,9 +45,10 @@ public class UserController {
             // 2️⃣ Save token to HTTPOnly cookie
             Cookie cookie = new Cookie("token", token);
             cookie.setHttpOnly(true);
-            cookie.setSecure(false);   // HTTPS ho to true
+            cookie.setSecure(secureCookie);
             cookie.setPath("/");
             cookie.setMaxAge(7 * 24 * 60 * 60);
+            cookie.setAttribute("SameSite", "Strict");
             response.addCookie(cookie);
 
             // 3️⃣ Hide JWT from frontend
@@ -73,9 +78,10 @@ public class UserController {
             // 2️⃣ Save token to HTTPOnly cookie
             Cookie cookie = new Cookie("token", token);
             cookie.setHttpOnly(true);
-            cookie.setSecure(false);   // HTTPS ho to true
+            cookie.setSecure(secureCookie);
             cookie.setPath("/");
             cookie.setMaxAge(7 * 24 * 60 * 60);
+            cookie.setAttribute("SameSite", "Strict");
             response.addCookie(cookie);
 
             // 3️⃣ Hide JWT from frontend
@@ -94,7 +100,7 @@ public class UserController {
     @GetMapping("/check-auth")
     public ResponseEntity<?> checkAuth() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getPrincipal() == null || authentication.getPrincipal().equals("anonymousUser")) {
+        if (authentication == null || authentication.getPrincipal() == null || authentication.getPrincipal().equals("anonymousUser") || !authentication.isAuthenticated()) {
             return ResponseEntity.ok(false);
         }
         return ResponseEntity.ok(true);
@@ -106,11 +112,12 @@ public class UserController {
     public ResponseEntity<?> logout(HttpServletResponse response) {
         SecurityContextHolder.clearContext(); // ✅ important
         // Delete the cookie
-        Cookie cookie = new Cookie("token", null); // same name as login cookie
+        Cookie cookie = new Cookie("token", null);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false); // true if using HTTPS
+        cookie.setSecure(secureCookie); 
         cookie.setPath("/");
-        cookie.setMaxAge(0); // delete immediately
+        cookie.setMaxAge(0);
+        cookie.setAttribute("SameSite", "Strict");
         response.addCookie(cookie);
 
         return ResponseEntity.ok("Logged out successfully");

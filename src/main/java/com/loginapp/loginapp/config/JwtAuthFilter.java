@@ -18,8 +18,11 @@ import java.io.IOException;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtils jwtUtils;
+    private final JwtUtils jwtUtils;
+
+    JwtAuthFilter(JwtUtils jwtUtils) {
+        this.jwtUtils = jwtUtils;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -29,7 +32,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = null;
 
-        // 🔥 Read token from cookie
+        //  Read token from cookie
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if (cookie.getName().equals("token")) {
