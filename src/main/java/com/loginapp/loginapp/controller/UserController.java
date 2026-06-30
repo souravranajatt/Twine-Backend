@@ -48,7 +48,7 @@ public class UserController {
             cookie.setSecure(secureCookie);
             cookie.setPath("/");
             cookie.setMaxAge(7 * 24 * 60 * 60);
-            cookie.setAttribute("SameSite", "Strict");
+            cookie.setAttribute("SameSite", "Lax");
             response.addCookie(cookie);
 
             // 3️⃣ Hide JWT from frontend
@@ -66,33 +66,41 @@ public class UserController {
     // Login endpoint
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+        try {
+            Optional<LoginResponse> loginFinal = userService.loginUser(loginRequest);
 
-        Optional<LoginResponse> loginFinal = userService.loginUser(loginRequest);
+            if (loginFinal.isPresent()) {
+                LoginResponse responseFinal = loginFinal.get();
 
-        if (loginFinal.isPresent()) {
-            LoginResponse responseFinal = loginFinal.get();
+                // 1️⃣ Get the actual JWT token before nulling
+                String token = responseFinal.getJwtToken();
 
-            // 1️⃣ Get the actual JWT token before nulling
-            String token = responseFinal.getJwtToken();
+                // 2️⃣ Save token to HTTPOnly cookie
+                Cookie cookie = new Cookie("token", token);
+                cookie.setHttpOnly(true);
+                cookie.setSecure(secureCookie);
+                cookie.setPath("/");
+                cookie.setMaxAge(7 * 24 * 60 * 60);
+                cookie.setAttribute("SameSite", "Lax");
+                response.addCookie(cookie);
 
-            // 2️⃣ Save token to HTTPOnly cookie
-            Cookie cookie = new Cookie("token", token);
-            cookie.setHttpOnly(true);
-            cookie.setSecure(secureCookie);
-            cookie.setPath("/");
-            cookie.setMaxAge(7 * 24 * 60 * 60);
-            cookie.setAttribute("SameSite", "Strict");
-            response.addCookie(cookie);
+                // 3️⃣ Hide JWT from frontend
+                responseFinal.setJwtToken(null);
 
-            // 3️⃣ Hide JWT from frontend
-            responseFinal.setJwtToken(null);
+                return ResponseEntity.ok(responseFinal);
+            }
 
-            return ResponseEntity.ok(responseFinal);
+            // Wrong credentials — 401
+            LoginResponse errLogin = new LoginResponse();
+            errLogin.setMessage("Invalid username or password!");
+            return ResponseEntity.status(401).body(errLogin);
+
+        } catch (IllegalArgumentException e) {
+            // Bad input (null/empty fields) — 400
+            LoginResponse errResponse = new LoginResponse();
+            errResponse.setMessage(e.getMessage());
+            return ResponseEntity.badRequest().body(errResponse);
         }
-
-        LoginResponse errLogin = new LoginResponse();
-        errLogin.setMessage("Invalid username or password!");
-        return ResponseEntity.status(401).body(errLogin);
     }
 
 
@@ -110,14 +118,14 @@ public class UserController {
     // Logout endpoint
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        SecurityContextHolder.clearContext(); // ✅ important
+        SecurityContextHolder.clearContext();
         // Delete the cookie
         Cookie cookie = new Cookie("token", null);
         cookie.setHttpOnly(true);
         cookie.setSecure(secureCookie); 
         cookie.setPath("/");
         cookie.setMaxAge(0);
-        cookie.setAttribute("SameSite", "Strict");
+        cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);
 
         return ResponseEntity.ok("Logged out successfully");

@@ -124,8 +124,12 @@ public class UserService {
     // Login validation
     public Optional<LoginResponse> loginUser(LoginRequest loginRequest) {
 
-        if (loginRequest.getUsername() == null || loginRequest.getPassword() == null) {
-            return Optional.empty();
+        // Null and Empty Checks
+        if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Username or email is required!");
+        }
+        if (loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("Password is required!");
         }
 
         String identifier = loginRequest.getUsername().trim().toLowerCase();
