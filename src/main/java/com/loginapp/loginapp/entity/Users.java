@@ -45,6 +45,9 @@ public class Users {
     @Column(name = "is_private", updatable = true)
     private boolean statusPrivate = false;
 
+    @Column(name = "is_suspend", updatable = true)
+    private boolean statusSuspend = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -114,6 +117,14 @@ public class Users {
     }
     public void setMobileNumber(String mobileNumber) {
         this.mobileNumber = mobileNumber;
+    }
+
+    public boolean isStatusSuspend() {
+        return statusSuspend;
+    }
+
+    public void setStatusSuspend(boolean statusSuspend) {
+        this.statusSuspend = statusSuspend;
     }
     
 }

@@ -14,10 +14,12 @@ import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
+import com.loginapp.loginapp.entity.AccountDeactivation;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.repository.UsersRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
+import com.loginapp.loginapp.repository.AccountDeactivationRepo;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 
@@ -46,6 +48,8 @@ public class SettingService {
 
     private final BlockRepo blockRepo;
 
+    private final AccountDeactivationRepo accountDeactivationRepo;
+
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
@@ -58,7 +62,7 @@ public class SettingService {
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
-    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo) {
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo) {
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
         this.cloudinaryService = cloudinaryService;
@@ -66,6 +70,7 @@ public class SettingService {
         this.followRepo = followRepo;
         this.passwordHashing = passwordHashing;
         this.blockRepo = blockRepo;
+        this.accountDeactivationRepo = accountDeactivationRepo;
     }
 
     // Profile Data Fetch Setting Service
@@ -251,6 +256,19 @@ public class SettingService {
         if (!passwordHashing.verifyPassword(deactivateRequestDTO.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Incorrect password!");
         }
+
+        // Already deactivated check
+        if (user.isStatusDeleted()) {
+            throw new IllegalArgumentException("Account is already deactivated!");
+        }
+
+
+        // Insert Deactivate Data 
+        AccountDeactivation newData = new AccountDeactivation();
+        newData.setReason(deactivateRequestDTO.getReason());
+        newData.setUser(user);
+        accountDeactivationRepo.save(newData);
+
 
         user.setStatusDeleted(true);
         usersRepo.save(user);

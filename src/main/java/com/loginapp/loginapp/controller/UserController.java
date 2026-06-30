@@ -67,39 +67,30 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
-            Optional<LoginResponse> loginFinal = userService.loginUser(loginRequest);
+            LoginResponse responseFinal = userService.loginUser(loginRequest);
 
-            if (loginFinal.isPresent()) {
-                LoginResponse responseFinal = loginFinal.get();
+            String token = responseFinal.getJwtToken();
 
-                // 1️⃣ Get the actual JWT token before nulling
-                String token = responseFinal.getJwtToken();
-
-                // 2️⃣ Save token to HTTPOnly cookie
-                Cookie cookie = new Cookie("token", token);
-                cookie.setHttpOnly(true);
-                cookie.setSecure(secureCookie);
-                cookie.setPath("/");
-                cookie.setMaxAge(7 * 24 * 60 * 60);
-                cookie.setAttribute("SameSite", "Lax");
-                response.addCookie(cookie);
-
-                // 3️⃣ Hide JWT from frontend
-                responseFinal.setJwtToken(null);
-
-                return ResponseEntity.ok(responseFinal);
-            }
-
-            // Wrong credentials — 401
-            LoginResponse errLogin = new LoginResponse();
-            errLogin.setMessage("Invalid username or password!");
-            return ResponseEntity.status(401).body(errLogin);
+            Cookie cookie = new Cookie("token", token);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(secureCookie);
+            cookie.setPath("/");
+            cookie.setMaxAge(7 * 24 * 60 * 60);
+            cookie.setAttribute("SameSite", "Lax");
+            response.addCookie(cookie);
+            
+            responseFinal.setJwtToken(null);
+            return ResponseEntity.ok(responseFinal);
 
         } catch (IllegalArgumentException e) {
-            // Bad input (null/empty fields) — 400
-            LoginResponse errResponse = new LoginResponse();
-            errResponse.setMessage(e.getMessage());
-            return ResponseEntity.badRequest().body(errResponse);
+            LoginResponse errLogin = new LoginResponse();
+            errLogin.setMessage(e.getMessage());
+
+            // Suspended message check karke 403 bhej sakte ho
+            if (e.getMessage().toLowerCase().contains("suspended")) {
+                return ResponseEntity.status(403).body(errLogin);
+            }
+            return ResponseEntity.badRequest().body(errLogin);
         }
     }
 

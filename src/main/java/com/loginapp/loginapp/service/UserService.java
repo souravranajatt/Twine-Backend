@@ -9,9 +9,13 @@ import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
 import com.loginapp.loginapp.Utils.JwtUtils;
 import com.loginapp.loginapp.Utils.PasswordHashing;
+import com.loginapp.loginapp.entity.AccountSuspend;
 import com.loginapp.loginapp.entity.Users;
+import com.loginapp.loginapp.repository.AccountSuspendRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -27,6 +31,8 @@ public class UserService {
 
     private final PasswordHashing passwordHashing;
 
+    private final AccountSuspendRepo accountSuspendRepo;
+
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
@@ -36,10 +42,11 @@ public class UserService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
 
-    UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing) {
+    UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing, AccountSuspendRepo accountSuspendRepo) {
         this.usersRepo = usersRepo;
         this.jwtUtils = jwtUtils;
         this.passwordHashing = passwordHashing;
+        this.accountSuspendRepo = accountSuspendRepo;
     }
 
 
@@ -122,7 +129,7 @@ public class UserService {
 
 
     // Login validation
-    public Optional<LoginResponse> loginUser(LoginRequest loginRequest) {
+    public LoginResponse loginUser(LoginRequest loginRequest) {
 
         // Null and Empty Checks
         if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
@@ -135,37 +142,61 @@ public class UserService {
         String identifier = loginRequest.getUsername().trim().toLowerCase();
         Optional<Users> userOpt;
 
-        // Check if the identifier is an email or username
         if (identifier.contains("@")) {
             userOpt = usersRepo.findByEmail(identifier);
         } else {
             userOpt = usersRepo.findByUsername(identifier);
         }
 
-        if (userOpt.isEmpty()) {
-            return Optional.empty(); // user not found
+        Users user = userOpt.orElseThrow(() -> 
+            new IllegalArgumentException("Invalid username or password!"));
+
+        // Verify password
+        if (!passwordHashing.verifyPassword(loginRequest.getPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Invalid username or password!");
         }
 
-        // verify the given password using BCrypt matches
-        if (passwordHashing.verifyPassword(loginRequest.getPassword(), userOpt.get().getPasswordHash())) {
-            Users user = userOpt.get();
+        // Suspended check
+        if (user.isStatusSuspend()) {
 
-            // Auto-reactivate account if it was deactivated
-            if (user.isStatusDeleted()) {
-                user.setStatusDeleted(false);
+            AccountSuspend suspension = accountSuspendRepo
+                .findTopByUserAndIsValidOrderBySuspendedAtDesc(user, true);
+
+            LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+
+            if (suspension == null) {
+                user.setStatusSuspend(false);
                 usersRepo.save(user);
-            }
 
-            // Generate JWT Token userId + Username
-            String resToken = jwtUtils.generateToken(user.getUserId(), user.getUsername());
-            
-            LoginResponse resData = new LoginResponse();
-            resData.setJwtToken(resToken);
-            resData.setMessage("Login Successful!");
-            return Optional.of(resData);
+            } else if (suspension.getSuspendedUntil().isBefore(now)) {
+                suspension.setValid(false);
+                accountSuspendRepo.save(suspension);
+
+                user.setStatusSuspend(false);
+                usersRepo.save(user);
+
+            } else {
+                throw new IllegalArgumentException(
+                    "Your account is suspended until " + suspension.getSuspendedUntil()
+                    + ". Reason: " + suspension.getReason()
+                );
+            }
         }
 
-        return Optional.empty(); // password not matched
+        // Auto-reactivate account if it was deactivated
+        if (user.isStatusDeleted()) {
+            user.setStatusDeleted(false);
+            usersRepo.save(user);
+        }
+
+        // Generate JWT Token
+        String resToken = jwtUtils.generateToken(user.getUserId(), user.getUsername());
+
+        LoginResponse resData = new LoginResponse();
+        resData.setJwtToken(resToken);
+        resData.setMessage("Login Successful!");
+
+        return resData;
     }
     
 }
