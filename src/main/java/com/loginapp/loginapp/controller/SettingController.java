@@ -2,7 +2,6 @@ package com.loginapp.loginapp.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -13,16 +12,19 @@ import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
+import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 
 
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/setting")
 public class SettingController {
     
     private final SettingService settingService;
@@ -31,8 +33,14 @@ public class SettingController {
         this.settingService = settingService;
     }
 
+
+
+    // ***************** Account Controllers ********************
+
+
+
     // Logged User Profile Fetch End Point
-    @GetMapping("/setting/profile/fetch")    
+    @GetMapping("/account/profile-fetch")    
     public ResponseEntity<?> profileDataSetting(){
         try{
             SettingDataDTO settingDataDTO = settingService.settingProfileData();
@@ -45,7 +53,7 @@ public class SettingController {
     }
 
     // Logged User Profile Update End Point
-    @PutMapping("/setting/profile/update")
+    @PutMapping("/account/profile-update")
     public ResponseEntity<?> profileDataUpdateSetting(@RequestBody SettingDataDTO updateDataDTO){
         try{
             String result = settingService.settingProfileDataUpdate(updateDataDTO);
@@ -57,21 +65,8 @@ public class SettingController {
         }
     }
 
-    // Private Account Update End Point
-    @PatchMapping("/setting/privacy/private/update")
-    public ResponseEntity<?> profilePrivacyPrivateUpdateSetting(@RequestBody Boolean isPrivate){
-        try{
-            String result = settingService.updatePrivacyPrivateStatus(isPrivate);
-            return ResponseEntity.ok(result);
-        }catch(IllegalArgumentException err){
-            return ResponseEntity.badRequest().body(err.getMessage());
-        }catch(Exception e){
-            return ResponseEntity.status(500).body("Internal server error");
-        }
-    }
-
     // Account Deactivation End Point
-    @PatchMapping("/setting/account/deactivate")
+    @PatchMapping("/account/deactivate")
     public ResponseEntity<?> accountDeactivationSetting(@RequestBody DeactivateRequestDTO deactivateRequestDTO){
         try{
             String result = settingService.deactivateAccount(deactivateRequestDTO);
@@ -83,34 +78,9 @@ public class SettingController {
         }
     }
 
-    // Password Change End Point
-    @PutMapping("/setting/password/update")
-    public ResponseEntity<?> changePasswordSetting(@RequestBody ChangePasswordRequestDTO changePasswordRequestDTO){
-        try{
-            String result = settingService.changePasswordService(changePasswordRequestDTO);
-            return ResponseEntity.ok(result);
-        }catch(IllegalArgumentException err){
-            return ResponseEntity.badRequest().body(err.getMessage());
-        }catch(Exception e){
-            return ResponseEntity.status(500).body("Internal server error");
-        }
-    }
 
-    // Block User End Point
-    @GetMapping("/setting/block/list/fetch")
-    public ResponseEntity<?> getMethodName() {
-        try{
-            List<BlockedUserFetchDTO> blockedUsers = settingService.fetchBlockedUsersList();
-            return ResponseEntity.ok(blockedUsers);
-        }catch(IllegalArgumentException err){
-            return ResponseEntity.badRequest().body(err.getMessage());
-        }catch(Exception e){
-            return ResponseEntity.status(500).body("Internal server error");
-        }
-    }
-    
     // Personal Details Fetch End Point
-    @GetMapping("/setting/personal/details/fetch")
+    @GetMapping("/account/personal-details-fetch")
     public ResponseEntity<?> getPersonalDetails() {
         try{
             PersonalDetailsDTO detailsDTO = settingService.personalDetailsFetch();
@@ -123,7 +93,7 @@ public class SettingController {
     }
 
     // Personal Details Update End Point
-    @PutMapping("/setting/personal/details/update")
+    @PutMapping("/account/personal-details-update")
     public ResponseEntity<?> updatePersonalDetails(@RequestBody PersonalDetailsDTO personalDetailsDTO) {
         try{
             String result = settingService.personalDetailsUpdate(personalDetailsDTO);
@@ -134,6 +104,80 @@ public class SettingController {
             return ResponseEntity.status(500).body("Internal server error");    
         }
     }
+
+
+
+
+
+    // ***************** Privacy Controllers ********************
+
+
+
+
+    // Private Account Update End Point
+    @PatchMapping("/privacy/private-account")
+    public ResponseEntity<?> profilePrivacyPrivateUpdateSetting(@RequestBody Boolean isPrivate){
+        try{
+            String result = settingService.updatePrivacyPrivateStatus(isPrivate);
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Block User End Point
+    @GetMapping("/privacy/block-list")
+    public ResponseEntity<?> fetchBlockList() {
+        try{
+            List<BlockedUserFetchDTO> blockedUsers = settingService.fetchBlockedUsersList();
+            return ResponseEntity.ok(blockedUsers);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+
+
+
+
+    // ***************** Security Controllers ********************
+
+
+
+    // Password Change End Point
+    @PutMapping("/security/password-change")
+    public ResponseEntity<?> changePasswordSetting(@RequestBody ChangePasswordRequestDTO changePasswordRequestDTO){
+        try{
+            String result = settingService.changePasswordService(changePasswordRequestDTO);
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+
+
+
+    // ***************** Your Activity Controllers ********************
+
+    @GetMapping("/activity/saved-posts")
+    public ResponseEntity<?> getSavedPosts(@RequestParam(defaultValue = "0") int page) {
+        try{
+            List<PostFetchDTO> savedPosts = settingService.fetchSavedPosts(page);
+            return ResponseEntity.ok(savedPosts);
+        } catch (IllegalArgumentException err) {
+            return ResponseEntity.badRequest().body(err.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+    
 
     
 }

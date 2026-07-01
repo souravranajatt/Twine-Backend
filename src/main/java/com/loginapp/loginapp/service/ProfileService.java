@@ -72,10 +72,6 @@ public class ProfileService {
         // 1️⃣ Get logged-in user
         Users loggedUser = authUtils.getLoggedUser();
 
-        if(loggedUser.isStatusDeleted()){
-            throw new IllegalArgumentException("Something went wrong!");
-        }
-
         // 2️⃣ Get searched user
         Users user = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -212,8 +208,8 @@ public class ProfileService {
 
         // Get Liked and Saved Post Ids for the logged-in user
         List<Long> postIds = posts.stream()
-        .map(PostsEntity::getPostId)
-        .collect(Collectors.toList());
+                .map(PostsEntity::getPostId)
+                .collect(Collectors.toList());
 
         Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
                 postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
@@ -351,7 +347,6 @@ public class ProfileService {
             dto.setFetchTaggedUsers(post.getTaggedUsers());
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
-            dto.setFetchVerified(userRes.isVerifyTag());
 
             // Set Post User Details
             dto.setFullname(post.getUserpost().getFullname());
@@ -360,6 +355,7 @@ public class ProfileService {
             if(post.getUserpost().getUserData() != null){
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
+            dto.setFetchVerified(userRes.isVerifyTag());
 
             PostMedia media = post.getPostMedia();
             if (media != null) {
@@ -445,6 +441,15 @@ public class ProfileService {
         .map(PostsEntity::getPostId)
         .collect(Collectors.toList());
 
+        List<Long> postOwnerIds = posts.stream()
+        .filter(post -> post.getUserpost() != null && post.getUserpost().isStatusPrivate())
+        .map(post -> post.getUserpost().getUserId())
+        .distinct()
+        .collect(Collectors.toList());
+
+        Set<Long> followedUserIds = postOwnerIds.isEmpty() ? Collections.emptySet()
+                : followRepo.findFollowingIds(loggedUser, postOwnerIds);
+
         Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
                 postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
 
@@ -456,6 +461,11 @@ public class ProfileService {
             // Check if post owner blocked me or I blocked post owner
             Long postOwnerUserId = post.getUserpost().getUserId();
             if(blockedByMe.contains(postOwnerUserId) || blockedMe.contains(postOwnerUserId)){
+                continue;
+            }
+
+            // Hide private users' posts unless the logged-in user follows them
+            if (post.getUserpost().isStatusPrivate() && !followedUserIds.contains(postOwnerUserId)) {
                 continue;
             }
 

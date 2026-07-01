@@ -16,7 +16,7 @@ import com.loginapp.loginapp.entity.PostsEntity;
 @Repository
 public interface PostCommentRepo extends JpaRepository<PostComment, Long> {
 
-    // Fetch all comment where parent id is null
+    // Fetch all comment of a post where parent id is null
     @Query("""
         SELECT c FROM PostComment c
         JOIN FETCH c.user

@@ -23,14 +23,14 @@ public interface BlockRepo extends JpaRepository<BlockUser, Long> {
     @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user AND b.blocked.statusDeleted = false")
     List<Users> findActiveBlockedUsers(@Param("user") Users user);
 
-    // Get blocked and blocking Ids
+    // used in profile service for tagged posts 
     @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user")
     List<Users> findBlockedUsers(@Param("user") Users user); // Blocked by Logged User
 
     @Query("SELECT b.blocker FROM BlockUser b WHERE b.blocked = :user")
     List<Users> findBlockedByUsers(@Param("user") Users user); // Loggeed User Blocked by Others
 
-    // For Follower Fetch 
+    // Used For Follower Fetch in profile service
     @Query("SELECT b.blocked.userId FROM BlockUser b WHERE b.blocker = :user")
     Set<Long> findBlockedUserIds(@Param("user") Users user);
 

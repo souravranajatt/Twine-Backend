@@ -2,7 +2,6 @@ package com.loginapp.loginapp.repository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import com.loginapp.loginapp.entity.Users;
@@ -51,7 +50,6 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 WHERE :username MEMBER OF p.taggedUsers
                 AND p.postVisiblity = true
                 AND p.userpost.statusDeleted = false
-                AND p.userpost.statusPrivate = false
                 ORDER BY p.uploadAt DESC
                 """)
         List<PostsEntity> findTaggedPosts(@Param("username") String username, Pageable page);

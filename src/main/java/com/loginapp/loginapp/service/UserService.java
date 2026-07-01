@@ -103,6 +103,9 @@ public class UserService {
         if (signupRequest.getPassword().length() < 8) {
             throw new IllegalArgumentException("Password must be at least 8 characters long!");
         }
+        if (signupRequest.getPassword().length() > 72) {
+            throw new IllegalArgumentException("Password cannot exceed 72 characters!");
+        }
 
         String passwordHashFinal = passwordHashing.hashPassword(signupRequest.getPassword());
 
@@ -137,6 +140,9 @@ public class UserService {
         }
         if (loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
             throw new IllegalArgumentException("Password is required!");
+        }
+        if (loginRequest.getPassword().length() > 72) {
+            throw new IllegalArgumentException("Invalid username or password!");
         }
 
         String identifier = loginRequest.getUsername().trim().toLowerCase();

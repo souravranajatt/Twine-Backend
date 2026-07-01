@@ -26,9 +26,11 @@ public interface FollowRepo extends JpaRepository<FollowUser, Long> {
     @Query("SELECT COUNT(f) FROM FollowUser f WHERE f.follower.userId = :userId AND f.following.statusDeleted = false")
     long countByFollower_UserId(@Param("userId") Long userId);
 
+    // Used in Home Feed Service for Finding Posts 
     @Query("SELECT f.following FROM FollowUser f WHERE f.follower = :user AND f.following.statusDeleted = false ")
     List<Users> findFollowingUsers(Users user);
 
+    // Used in Profile Service for fetching followers list
     @Query("SELECT f.follower FROM FollowUser f WHERE f.following = :user AND f.follower.statusDeleted = false ")
     List<Users> findFollowerUsers(Users user, Pageable pageable);
 
@@ -37,6 +39,8 @@ public interface FollowRepo extends JpaRepository<FollowUser, Long> {
 
 	boolean existsByFollowerAndFollowing(Users userOne, Users userTwo);
 
+
+    // Both these two used in Fetching follower list of someone else profile , for matching that i follow the or not 
     @Query("""
         SELECT f.follower.userId FROM FollowUser f
         WHERE f.following = :user

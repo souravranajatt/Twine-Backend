@@ -210,6 +210,7 @@ public class HomeFeedService {
             // Like/Save status
             dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
             dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
+            dto.setOwnPost(post.getUserpost().getUserId().equals(user.getUserId()));
 
             dtoList.add(dto);
         }
