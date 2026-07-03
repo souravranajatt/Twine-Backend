@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.loginapp.loginapp.DTO.ArchivePostsDTO;
 import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
@@ -25,6 +26,7 @@ import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.repository.UsersRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.PostLikeRepo;
+import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
 import com.loginapp.loginapp.repository.AccountDeactivationRepo;
 import com.loginapp.loginapp.repository.BlockRepo;
@@ -59,6 +61,8 @@ public class SettingService {
 
     private final AccountDeactivationRepo accountDeactivationRepo;
 
+    private final PostRepo postRepo;
+
     private final SavedPostRepo savedPostRepo;
 
     private final PostLikeRepo postLikeRepo;
@@ -75,7 +79,7 @@ public class SettingService {
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
-    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo) {
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo, PostRepo postRepo) {
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
         this.cloudinaryService = cloudinaryService;
@@ -86,6 +90,7 @@ public class SettingService {
         this.accountDeactivationRepo = accountDeactivationRepo;
         this.savedPostRepo = savedPostRepo;
         this.postLikeRepo = postLikeRepo;
+        this.postRepo = postRepo;
     }
 
 
@@ -426,7 +431,9 @@ public class SettingService {
 
     // ======================== Your Activity Modules =============================
 
-    // Save Posts Fetching Service
+
+
+    // 1. Save Posts Fetching Service
     public List<PostFetchDTO> fetchSavedPosts(int page) {
         // Get UserId from Security Context JWT Token
         Users user = authUtils.getLoggedUser();
@@ -528,5 +535,37 @@ public class SettingService {
         return postFetchDTOList;
     }
 
+
+    
+    // 2. Archive Posts Fetching Service
+    public List<ArchivePostsDTO> fetchArchivedPosts(int page) {
+        // Get UserId from Security Context JWT Token
+        Users user = authUtils.getLoggedUser();
+
+        Pageable pageable = PageRequest.of(page, 12); 
+
+        // Fetch archived posts logic here
+        List<PostsEntity> archivedPosts = postRepo.findArchivedPostsByUser(user, pageable);
+
+        // Create a PostFetchDTO list to return
+        List<ArchivePostsDTO> archivePostList = new ArrayList<>();
+
+        for (PostsEntity post : archivedPosts) {
+            if (post.getUserpost() == null || post.getUserpost().isStatusDeleted()) {
+                continue;
+            }
+
+            // DTO Creation
+            ArchivePostsDTO dto = new ArchivePostsDTO();
+            dto.setPostId(String.valueOf(post.getPostId()));
+            dto.setPostContent(post.getFileName());
+            dto.setPostCaption(post.getPostCaption());
+            dto.setUploadAt(post.getUploadAt());
+
+            archivePostList.add(dto);
+        }
+
+        return archivePostList;
+    }
     
 }

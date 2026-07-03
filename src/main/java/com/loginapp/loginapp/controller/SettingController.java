@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.loginapp.loginapp.DTO.ArchivePostsDTO;
 import com.loginapp.loginapp.DTO.BlockedUserFetchDTO;
 import com.loginapp.loginapp.DTO.ChangePasswordRequestDTO;
 import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
@@ -166,11 +167,25 @@ public class SettingController {
 
     // ***************** Your Activity Controllers ********************
 
+    // 1. Saved Posts Fetch End Point
     @GetMapping("/activity/saved-posts")
     public ResponseEntity<?> getSavedPosts(@RequestParam(defaultValue = "0") int page) {
         try{
             List<PostFetchDTO> savedPosts = settingService.fetchSavedPosts(page);
             return ResponseEntity.ok(savedPosts);
+        } catch (IllegalArgumentException err) {
+            return ResponseEntity.badRequest().body(err.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // 2. Archived Posts Fetch End Point
+    @GetMapping("/activity/archive-posts")
+    public ResponseEntity<?> getArchivedPosts(@RequestParam(defaultValue = "0") int page) {
+        try{
+            List<ArchivePostsDTO> archivedPosts = settingService.fetchArchivedPosts(page);
+            return ResponseEntity.ok(archivedPosts);
         } catch (IllegalArgumentException err) {
             return ResponseEntity.badRequest().body(err.getMessage());
         } catch (Exception e) {

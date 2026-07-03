@@ -72,5 +72,15 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 AND p.postVisiblity = true
                         """)
         PostsEntity findActivePost(@Param("postId") Long postId);
+
+        // Fetch Archive Posts
+        @Query("""
+                SELECT p FROM PostsEntity p
+                WHERE p.userpost=:user
+                AND p.postVisiblity = false
+                AND p.userpost.statusDeleted = false
+                ORDER BY p.uploadAt DESC
+                """)
+        List<PostsEntity> findArchivedPostsByUser(@Param("user") Users user, Pageable page);
         
 }
