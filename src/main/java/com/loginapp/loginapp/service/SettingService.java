@@ -561,6 +561,9 @@ public class SettingService {
             dto.setPostContent(post.getFileName());
             dto.setPostCaption(post.getPostCaption());
             dto.setUploadAt(post.getUploadAt());
+            if (post.getPostMedia() != null) {
+                dto.setPostType(post.getPostMedia().getPostType().name());
+            }
 
             archivePostList.add(dto);
         }

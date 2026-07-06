@@ -7,6 +7,7 @@ public class ArchivePostsDTO {
     private String postContent;
     private String postCaption;
     private LocalDateTime uploadAt;
+    private String postType;
 
     
     public String getPostId() {
@@ -32,6 +33,12 @@ public class ArchivePostsDTO {
     }
     public void setUploadAt(LocalDateTime uploadAt) {
         this.uploadAt = uploadAt;
+    }
+    public String getPostType() {
+        return postType;
+    }
+    public void setPostType(String postType) {
+        this.postType = postType;
     }
 
     

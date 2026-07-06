@@ -245,6 +245,28 @@ public class PostActionService {
 
     }
 
+    // Unarchive a post
+    public void unarchivePost(Long postId){
+        Users loggedUser = authUtils.getLoggedUser();
+
+        PostsEntity post = postRepo.findArchivedPostById(postId, loggedUser);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+
+        if (!post.getUserpost().getUserId().equals(loggedUser.getUserId())) {
+            throw new AccessDeniedException("Invalid Actions");
+        }
+
+        if(post.getPostVisiblity()){
+            throw new IllegalArgumentException("Post already unarchived!");
+        }
+
+        // Unarchive post 
+        post.setPostVisiblity(true);
+        postRepo.save(post);
+    }
+
     // Hide Likes on a post
     public void hideLikes(Long postId){
         Users loggedUser = authUtils.getLoggedUser();

@@ -19,7 +19,7 @@ public class HomeFeedController {
         this.homeFeedService = homeFeedService;
     }
 
-    // ✅ Home Feed API
+    // Home Feed API
     @GetMapping("/feed")
     public ResponseEntity<List<PostFetchDTO>> getHomeFeed(
             @RequestParam(defaultValue = "0") int page) {

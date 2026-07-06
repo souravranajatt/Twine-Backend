@@ -124,6 +124,21 @@ public class PostActionController {
         }
     }
 
+    // Unarchive a post
+    @PatchMapping("/{postId}/unarchive")
+    public ResponseEntity<?> unarchivePost(@PathVariable Long postId) {
+        try {
+            postActionService.unarchivePost(postId);
+            return ResponseEntity.ok("Unarchived");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage()); // 403 not 400
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("An error occurred while updating..");
+        }
+    }
+
     // Hide Like on a post
     @PatchMapping("/{postId}/hide-likes")
     public ResponseEntity<?> hideLikes(@PathVariable Long postId) {
