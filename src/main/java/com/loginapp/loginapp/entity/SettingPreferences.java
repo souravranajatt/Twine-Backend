@@ -2,14 +2,18 @@ package com.loginapp.loginapp.entity;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-
 import org.hibernate.annotations.GenericGenerator;
-
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "setting_preferences")
 public class SettingPreferences {
+
+    public enum PreferenceVisibility {
+        EVERYONE,
+        FOLLOWERS_ONLY,
+        NO_ONE
+    }
 
     @Id
     @GeneratedValue(generator = "snowflake")
@@ -30,8 +34,13 @@ public class SettingPreferences {
     @Column(name = "like_visible", nullable = false)
     private boolean likeVisible = true;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "tag", nullable = false)
-    private boolean taggingEnable = true;
+    private PreferenceVisibility taggingEnable = PreferenceVisibility.EVERYONE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mention", nullable = false)
+    private PreferenceVisibility mentionEnable = PreferenceVisibility.EVERYONE;
 
     @Column(name = "discoverable", nullable = false)
     private boolean discoverable = true;
@@ -42,13 +51,12 @@ public class SettingPreferences {
     @Column(name = "updated_at", updatable = true)
     private LocalDateTime updatedAt;
 
-
     public SettingPreferences() {
     }
 
     @PrePersist
     protected void onCreate() {
-            this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        this.createdAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
     }
 
     @PreUpdate
@@ -56,8 +64,7 @@ public class SettingPreferences {
         this.updatedAt = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
     }
 
-
-    // Getters & Setters
+    // ---------- Getters & Setters ----------
 
     public Long getSettingId() {
         return settingId;
@@ -91,12 +98,28 @@ public class SettingPreferences {
         this.likeVisible = likeVisible;
     }
 
-    public boolean isTaggingEnable() {
+    public PreferenceVisibility getTaggingEnable() {
         return taggingEnable;
     }
 
-    public void setTaggingEnable(boolean taggingEnable) {
+    public void setTaggingEnable(PreferenceVisibility taggingEnable) {
         this.taggingEnable = taggingEnable;
+    }
+
+    public PreferenceVisibility getMentionEnable() {
+        return mentionEnable;
+    }
+
+    public void setMentionEnable(PreferenceVisibility mentionEnable) {
+        this.mentionEnable = mentionEnable;
+    }
+
+    public boolean isDiscoverable() {
+        return discoverable;
+    }
+
+    public void setDiscoverable(boolean discoverable) {
+        this.discoverable = discoverable;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -106,5 +129,5 @@ public class SettingPreferences {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
-    
+
 }

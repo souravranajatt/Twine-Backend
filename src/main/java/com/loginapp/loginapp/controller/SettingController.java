@@ -15,6 +15,7 @@ import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
+import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -141,8 +142,70 @@ public class SettingController {
         }
     }
 
+    // Fetch Intreaction Settings End Point
+    @GetMapping("/privacy/intreaction-settings")
+    public ResponseEntity<?> fetchIntreactionSettings() {
+        try{
+            SettingIntreactionDTO intreactionSettings = settingService.fetchIntreactionPreferences();
+            return ResponseEntity.ok(intreactionSettings);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
 
+    // Hide Like by default on new posts End Point
+    @PatchMapping("/privacy/hide-like")
+    public ResponseEntity<?> hideLikeDefaultSetting() {
+        try{
+            String result = settingService.hideLikeDefaultSetting();
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
 
+    // Show Like by default on new posts End Point
+    @PatchMapping("/privacy/show-like")
+    public ResponseEntity<?> showLikeDefaultSetting() {
+        try{
+            String result = settingService.showLikeDefaultSetting();
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Turn Off Commenting by default on new posts End Point
+    @PatchMapping("/privacy/turn-off-commenting")
+    public ResponseEntity<?> turnOffCommentingDefaultSetting() {
+        try{
+            String result = settingService.turnOffCommentingDefaultSetting();
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Turn On Commenting by default on new posts End Point
+    @PatchMapping("/privacy/turn-on-commenting")
+    public ResponseEntity<?> turnOnCommentingDefaultSetting() {
+        try{
+            String result = settingService.turnOnCommentingDefaultSetting();
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
 
 
     // ***************** Security Controllers ********************

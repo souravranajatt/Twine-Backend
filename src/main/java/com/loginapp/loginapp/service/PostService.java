@@ -14,8 +14,6 @@ import org.springframework.data.domain.Pageable;
 import java.io.IOException;
 import java.util.*;
 
-import com.loginapp.loginapp.DTO.PostCommentDTO;
-
 import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.PostUploadRequest;
@@ -137,7 +135,7 @@ public class PostService {
             throw new IllegalArgumentException("Caption size is too long!");
         }
 
-        // ✅ File bytes lo
+        //  File bytes lo
         byte[] fileBytes = file.getBytes();
 
         // 4️⃣ Save post entity
@@ -151,7 +149,7 @@ public class PostService {
             post.setTimelineUser(user.getUserData().getTimeUser());
         }
 
-        // ✅ Cloudinary 
+        //  Cloudinary 
         String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + 
                           file.getOriginalFilename();
         String fileUrl = cloudinaryService.uploadFile(fileBytes, filename, contentType);

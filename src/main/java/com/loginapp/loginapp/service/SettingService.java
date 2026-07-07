@@ -13,8 +13,10 @@ import com.loginapp.loginapp.DTO.DeactivateRequestDTO;
 import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
+import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
+import com.loginapp.loginapp.Utils.DefaultSetting;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
@@ -23,11 +25,13 @@ import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
+import com.loginapp.loginapp.entity.SettingPreferences;
 import com.loginapp.loginapp.repository.UsersRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
+import com.loginapp.loginapp.repository.SettingPreferencesRepo;
 import com.loginapp.loginapp.repository.AccountDeactivationRepo;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
@@ -67,6 +71,10 @@ public class SettingService {
 
     private final PostLikeRepo postLikeRepo;
 
+    private final SettingPreferencesRepo settingPreferencesRepo;
+
+    private final DefaultSetting defaultSetting;
+
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
@@ -79,7 +87,7 @@ public class SettingService {
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
-    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo, PostRepo postRepo) {
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting) {
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
         this.cloudinaryService = cloudinaryService;
@@ -91,6 +99,8 @@ public class SettingService {
         this.savedPostRepo = savedPostRepo;
         this.postLikeRepo = postLikeRepo;
         this.postRepo = postRepo;
+        this.settingPreferencesRepo = settingPreferencesRepo;
+        this.defaultSetting = defaultSetting;
     }
 
 
@@ -116,6 +126,7 @@ public class SettingService {
             settingDataDTO.setProfilePictureUrl(user.getUserData().getProfilePhoto());
             settingDataDTO.setProfileBadge(user.getUserData().getBadge());
         }
+
         return settingDataDTO;
     }
 
@@ -387,6 +398,119 @@ public class SettingService {
 
         return blockedUsers;
             
+    }
+
+    // 3. Fetch Intreaction Preferences Service
+    public SettingIntreactionDTO fetchIntreactionPreferences() {
+        // Get UserId from Security Context JWT Token
+        Users user = authUtils.getLoggedUser();
+
+        // Find or Create SettingPreferences for the user
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        // Create and return SettingIntreactionDTO
+        SettingIntreactionDTO intreactionDTO = new SettingIntreactionDTO();
+        intreactionDTO.setCommentingEnable(settingPreferences.isCommentingEnable());
+        intreactionDTO.setLikeVisible(settingPreferences.isLikeVisible());
+        intreactionDTO.setTaggingEnable(settingPreferences.getTaggingEnable().name());
+        intreactionDTO.setMentionEnable(settingPreferences.getMentionEnable().name());
+        return intreactionDTO;
+    }
+
+    // Hide Like by default on new posts Logic
+    public String hideLikeDefaultSetting() {
+        // Get UserId from Security Context JWT Token
+        Users user = authUtils.getLoggedUser();
+
+        // Find or Create SettingPreferences for the user
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        // check if like is already hidden
+        if (!settingPreferences.isLikeVisible()) {
+            return "Like visibility is already set to hidden by default on new posts.";
+        }
+        
+        // Update the like visibility to false
+
+        settingPreferences.setLikeVisible(false);
+        settingPreferencesRepo.save(settingPreferences);
+
+        return "Like visibility set to hidden by default on new posts.";
+    }
+
+    // Show Like by default on new posts Logic
+    public String showLikeDefaultSetting() {
+        // Get UserId from Security Context JWT Token
+        Users user = authUtils.getLoggedUser();
+
+        // Find or Create SettingPreferences for the user
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        // check if like is already visible
+        if (settingPreferences.isLikeVisible()) {
+            return "Like visibility is already set to visible by default on new posts.";
+        }
+        
+        // Update the like visibility to true
+        settingPreferences.setLikeVisible(true);
+        settingPreferencesRepo.save(settingPreferences);
+
+        return "Like visibility set to visible by default on new posts.";
+    }
+
+    // Turn Off Commenting by default on new posts Logic
+    public String turnOffCommentingDefaultSetting() {
+        // Get UserId from Security Context JWT Token
+        Users user = authUtils.getLoggedUser();
+
+        // Find or Create SettingPreferences for the user
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        // check if commenting is already disabled
+        if (!settingPreferences.isCommentingEnable()) {
+            return "Commenting is already turned off by default on new posts.";
+        }
+        
+        // Update the commenting enable to false
+        settingPreferences.setCommentingEnable(false);
+        settingPreferencesRepo.save(settingPreferences);
+
+        return "Commenting turned off by default on new posts.";
+    }
+
+    // Turn On Commenting by default on new posts Logic
+    public String turnOnCommentingDefaultSetting() {
+        // Get UserId from Security Context JWT Token
+        Users user = authUtils.getLoggedUser();
+
+        // Find or Create SettingPreferences for the user
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        // check if commenting is already enabled
+        if (settingPreferences.isCommentingEnable()) {
+            return "Commenting is already turned on by default on new posts.";
+        }
+        
+        // Update the commenting enable to true
+        settingPreferences.setCommentingEnable(true);
+        settingPreferencesRepo.save(settingPreferences);
+
+        return "Commenting turned on by default on new posts.";
     }
 
 

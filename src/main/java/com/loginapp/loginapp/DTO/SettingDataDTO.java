@@ -86,4 +86,6 @@ public class SettingDataDTO {
     public void setPrivateAccount(boolean privateAccount) {
         this.privateAccount = privateAccount;
     }
+
+    
 }
