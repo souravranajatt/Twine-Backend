@@ -93,6 +93,7 @@ public class PostService {
         this.settingPreferencesRepo = settingPreferencesRepo;
     }
 
+    // ******************** POST UPLOAD ************************
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
 
         // 1️⃣ Get logged-in username from JWT
