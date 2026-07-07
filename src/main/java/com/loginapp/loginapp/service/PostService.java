@@ -23,6 +23,7 @@ import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
+import com.loginapp.loginapp.entity.SettingPreferences;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
@@ -31,6 +32,7 @@ import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
+import com.loginapp.loginapp.repository.SettingPreferencesRepo;
 
 import net.coobird.thumbnailator.Thumbnails;
 
@@ -63,6 +65,8 @@ public class PostService {
 
     private final PostCommentRepo postCommentRepo;
 
+    private final SettingPreferencesRepo settingPreferencesRepo;
+
     PostService(
         PostRepo postRepo,
         AuthUtils authUtils,
@@ -73,7 +77,8 @@ public class PostService {
         BlockRepo blockRepo,
         PostLikeRepo postLikeRepo,
         SavedPostRepo savedPostRepo,
-        PostCommentRepo postCommentRepo
+        PostCommentRepo postCommentRepo,
+        SettingPreferencesRepo settingPreferencesRepo
     ) {
         this.postRepo = postRepo;
         this.authUtils = authUtils;
@@ -85,6 +90,7 @@ public class PostService {
         this.postLikeRepo = postLikeRepo;
         this.savedPostRepo = savedPostRepo;
         this.postCommentRepo = postCommentRepo;
+        this.settingPreferencesRepo = settingPreferencesRepo;
     }
 
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
@@ -147,6 +153,16 @@ public class PostService {
         if (user.getUserData() != null && user.getUserData().getTimeUser() != null
         && postUploadRequest.getPostTimelineUser() == 1) {
             post.setTimelineUser(user.getUserData().getTimeUser());
+        }
+
+        // Add default settings for new post
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if(settingPreferences != null) {
+            post.setCommentEnabled(settingPreferences.isCommentingEnable());
+            post.setLikeVisible(settingPreferences.isLikeVisible());
+        } else {
+             post.setCommentEnabled(true);
+            post.setLikeVisible(true);
         }
 
         //  Cloudinary 
