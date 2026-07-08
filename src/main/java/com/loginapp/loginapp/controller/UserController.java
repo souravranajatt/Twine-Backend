@@ -10,7 +10,6 @@ import com.loginapp.loginapp.DTO.LoginResponse;
 import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
-import com.loginapp.loginapp.Utils.JwtUtils;
 import com.loginapp.loginapp.service.UserService;
 
 import jakarta.servlet.http.Cookie;
