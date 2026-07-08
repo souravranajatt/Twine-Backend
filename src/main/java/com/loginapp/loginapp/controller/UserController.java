@@ -21,14 +21,12 @@ import jakarta.servlet.http.HttpServletResponse;
 public class UserController {
 
     private final UserService userService;
-    private final JwtUtils jwtUtils;
 
     @Value("${app.secure-cookie}")
     private boolean secureCookie;
 
-    UserController(UserService userService, JwtUtils jwtUtils) {
+    UserController(UserService userService) {
         this.userService = userService;
-        this.jwtUtils = jwtUtils;
     }
 
     // Complete Registration
