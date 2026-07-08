@@ -31,7 +31,7 @@ public class UserController {
         this.jwtUtils = jwtUtils;
     }
 
-    // Complete Registration (Requires OTP to be verified first)
+    // Complete Registration
     @PostMapping("/signup")
     public ResponseEntity<SignupResponse> signup(@RequestBody SignupRequest signupRequest, HttpServletResponse response) {
         try {
