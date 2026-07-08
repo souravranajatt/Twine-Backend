@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.loginapp.loginapp.DTO.LoginRequest;
 import com.loginapp.loginapp.DTO.LoginResponse;
+import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
 import com.loginapp.loginapp.Utils.JwtUtils;
@@ -15,14 +16,11 @@ import com.loginapp.loginapp.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/api/auth")
 public class UserController {
 
     private final UserService userService;
-
     private final JwtUtils jwtUtils;
 
     @Value("${app.secure-cookie}")
@@ -33,16 +31,16 @@ public class UserController {
         this.jwtUtils = jwtUtils;
     }
 
-    // Signup endpoint
+    // Complete Registration (Requires OTP to be verified first)
     @PostMapping("/signup")
     public ResponseEntity<SignupResponse> signup(@RequestBody SignupRequest signupRequest, HttpServletResponse response) {
         try {
             SignupResponse responseFinal = userService.registerUser(signupRequest);
             
-            // 1️⃣ Get the actual JWT token before nulling
+            // Get the actual JWT token before nulling
             String token = responseFinal.getJwtToken();
 
-            // 2️⃣ Save token to HTTPOnly cookie
+            // Save token to HTTPOnly cookie
             Cookie cookie = new Cookie("token", token);
             cookie.setHttpOnly(true);
             cookie.setSecure(secureCookie);
@@ -51,7 +49,7 @@ public class UserController {
             cookie.setAttribute("SameSite", "Lax");
             response.addCookie(cookie);
 
-            // 3️⃣ Hide JWT from frontend
+            // Hide JWT from frontend
             responseFinal.setJwtToken(null);
 
             return ResponseEntity.ok(responseFinal);
@@ -62,6 +60,39 @@ public class UserController {
         }
     }
 
+    // Step 1: Validate full form input and send OTP to email
+    @PostMapping("/send-otp")
+    public ResponseEntity<SignupResponse> sendOtp(@RequestBody SignupRequest signupRequest) {
+        try {
+            userService.sendOtp(signupRequest);
+
+            SignupResponse res = new SignupResponse();
+            res.setMessage("OTP sent! Please check your email.");
+            return ResponseEntity.ok(res);
+
+        } catch (IllegalArgumentException e) {
+            SignupResponse errResponse = new SignupResponse();
+            errResponse.setMessage(e.getMessage());
+            return ResponseEntity.badRequest().body(errResponse);
+        }
+    }
+
+    // Step 2: Verify the OTP entered by the user
+    @PostMapping("/verify-otp")
+    public ResponseEntity<SignupResponse> verifyOtp(@RequestBody OtpRequestDto otpRequestDto) {
+        try {
+            userService.verifyOtp(otpRequestDto);
+
+            SignupResponse res = new SignupResponse();
+            res.setMessage("OTP verified successfully!");
+            return ResponseEntity.ok(res);
+
+        } catch (IllegalArgumentException e) {
+            SignupResponse errResponse = new SignupResponse();
+            errResponse.setMessage(e.getMessage());
+            return ResponseEntity.badRequest().body(errResponse);
+        }
+    }
 
     // Login endpoint
     @PostMapping("/login")
@@ -86,14 +117,12 @@ public class UserController {
             LoginResponse errLogin = new LoginResponse();
             errLogin.setMessage(e.getMessage());
 
-            // Suspended message check karke 403 bhej sakte ho
             if (e.getMessage().toLowerCase().contains("suspended")) {
                 return ResponseEntity.status(403).body(errLogin);
             }
             return ResponseEntity.badRequest().body(errLogin);
         }
     }
-
 
     // Authentication Check EndPoint
     @GetMapping("/check-auth")
@@ -105,12 +134,10 @@ public class UserController {
         return ResponseEntity.ok(true);
     }
 
-
     // Logout endpoint
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
         SecurityContextHolder.clearContext();
-        // Delete the cookie
         Cookie cookie = new Cookie("token", null);
         cookie.setHttpOnly(true);
         cookie.setSecure(secureCookie); 
@@ -121,6 +148,4 @@ public class UserController {
 
         return ResponseEntity.ok("Logged out successfully");
     }
-
-
 }

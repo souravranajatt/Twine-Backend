@@ -1,19 +1,26 @@
 package com.loginapp.loginapp.service;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.LoginRequest;
 import com.loginapp.loginapp.DTO.LoginResponse;
+import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
 import com.loginapp.loginapp.Utils.JwtUtils;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.AccountSuspend;
+import com.loginapp.loginapp.entity.SignupVerification;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.AccountSuspendRepo;
+import com.loginapp.loginapp.repository.SignupVerificationRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -23,17 +30,17 @@ import java.util.regex.Pattern;
 @Transactional
 public class UserService {
 
-    // Inject Other Files thorugh constructor
-
     private final UsersRepo usersRepo;
-
     private final JwtUtils jwtUtils;
-
     private final PasswordHashing passwordHashing;
-
     private final AccountSuspendRepo accountSuspendRepo;
+    private final SignupVerificationRepo signupVerificationRepo;
+    private final JavaMailSender mailSender;
 
-    // Username regex (only lowercase letters, numbers, underscore)
+    @Value("${app.otp.expiry-minutes}")
+    private int otpExpiryMinutes;
+
+    // Username regex (only lowercase letters, numbers, underscore, dot)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
 
@@ -41,17 +48,164 @@ public class UserService {
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
+    private static final int MAX_OTP_ATTEMPTS = 5;
 
-    UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing, AccountSuspendRepo accountSuspendRepo) {
+    UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing,
+                AccountSuspendRepo accountSuspendRepo, SignupVerificationRepo signupVerificationRepo,
+                JavaMailSender mailSender) {
         this.usersRepo = usersRepo;
         this.jwtUtils = jwtUtils;
         this.passwordHashing = passwordHashing;
         this.accountSuspendRepo = accountSuspendRepo;
+        this.signupVerificationRepo = signupVerificationRepo;
+        this.mailSender = mailSender;
     }
 
 
-    // Signup with validation
-    @Transactional
+
+
+
+
+
+
+
+    // Step 1: Send OTP to email 
+    public void sendOtp(SignupRequest signupRequest) {
+
+        // ====== 1. Null and Empty Checks ======
+        if (signupRequest.getFullname() == null || signupRequest.getFullname().trim().isEmpty()) {
+            throw new IllegalArgumentException("Fullname is required!");
+        }
+        if (signupRequest.getUsername() == null || signupRequest.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Username is required!");
+        }
+        if (signupRequest.getEmail() == null || signupRequest.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required!");
+        }
+        if (signupRequest.getPassword() == null || signupRequest.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("Password is required!");
+        }
+
+        // ====== 2. Trim and Normalize Data ======
+        String fullnameFinal = signupRequest.getFullname().trim();
+        String usernameFinal = signupRequest.getUsername().trim().toLowerCase();
+        String emailFinal = signupRequest.getEmail().trim().toLowerCase();
+
+        // ====== 3. Full Name Validation ======
+        if (fullnameFinal.length() > 30) {
+            throw new IllegalArgumentException("Fullname can't exceed 30 characters!");
+        }
+
+        // ====== 4. Username Validation ======
+        if (usernameFinal.length() > 25) {
+            throw new IllegalArgumentException("Username can't exceed 25 characters!");
+        }
+        if (!USERNAME_PATTERN.matcher(usernameFinal).matches()) {
+            throw new IllegalArgumentException("Username can only contain lowercase letters, digits, '.', and '_' !");
+        }
+
+        // ====== 5. Email Validation ======
+        if (!EMAIL_PATTERN.matcher(emailFinal).matches()) {
+            throw new IllegalArgumentException("Enter a valid email address!");
+        }
+
+        // ====== 6. Uniqueness Check ======
+        if (usersRepo.findByUsername(usernameFinal).isPresent()) {
+            throw new IllegalArgumentException("Username already taken!");
+        }
+        if (usersRepo.findByEmail(emailFinal).isPresent()) {
+            throw new IllegalArgumentException("Email already registered!");
+        }
+
+        // ====== 7. Password Validation =====
+        if (signupRequest.getPassword().length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long!");
+        }
+        if (signupRequest.getPassword().length() > 72) {
+            throw new IllegalArgumentException("Password cannot exceed 72 characters!");
+        }
+
+        // ====== 8. Generate 6-digit OTP ======
+        SecureRandom random = new SecureRandom();
+        int otpCode = 100000 + random.nextInt(900000);
+        String otpPlain = String.valueOf(otpCode);
+
+        // Hash the OTP using PasswordHashing utility
+        String otpHashed = passwordHashing.hashPassword(otpPlain);
+
+        // ====== 9. Save OTP in SignupVerification table ======
+        
+        signupVerificationRepo.deleteByEmailId(emailFinal); // Delete previous verification records
+        signupVerificationRepo.flush(); // Sync the changes to the database
+
+        SignupVerification record = new SignupVerification();
+        record.setEmailId(emailFinal);
+        record.setOtpHash(otpHashed);
+        record.setVerified(false);
+        record.setAttemptCount(0);
+        record.setExpireAt(LocalDateTime.now(ZoneId.of("Asia/Kolkata")).plusMinutes(otpExpiryMinutes));
+
+        signupVerificationRepo.save(record);
+
+        // ====== 10. Send OTP to Mail ======
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setTo(emailFinal);
+        mail.setSubject("Twine - Verify Your Email");
+        mail.setText(
+            "Hi " + fullnameFinal + ",\n\n" +
+            "Your OTP code is: " + otpPlain + "\n\n" +
+            "This code is valid for " + otpExpiryMinutes + " minutes.\n" +
+            "Do not share this with anyone.\n\n" +
+            "- Twine Team"
+        );
+        mailSender.send(mail);
+    }
+
+
+
+    // Step 2: Verify the OTP code
+    public void verifyOtp(OtpRequestDto otpRequestDto) {
+
+        if (otpRequestDto.getEmail() == null || otpRequestDto.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required!");
+        }
+        if (otpRequestDto.getOtp() == null || otpRequestDto.getOtp().trim().isEmpty()) {
+            throw new IllegalArgumentException("OTP is required!");
+        }
+
+        String emailFinal = otpRequestDto.getEmail().trim().toLowerCase();
+        String otpEntered = otpRequestDto.getOtp().trim();
+
+        SignupVerification record = signupVerificationRepo.findByEmailId(emailFinal)
+            .orElseThrow(() -> new IllegalArgumentException("No OTP requested for this email. Please request a new OTP first."));
+
+        // Check expiry
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        if (record.getExpireAt() != null && now.isAfter(record.getExpireAt())) {
+            signupVerificationRepo.delete(record);
+            throw new IllegalArgumentException("OTP has expired. Please request a new OTP.");
+        }
+
+        // Check attempt count
+        if (record.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+            signupVerificationRepo.delete(record);
+            throw new IllegalArgumentException("Too many incorrect OTP attempts. Please request a new OTP.");
+        }
+
+        // Verify OTP hash
+        if (!passwordHashing.verifyPassword(otpEntered, record.getOtpHash())) {
+            record.setAttemptCount(record.getAttemptCount() + 1);
+            signupVerificationRepo.save(record);
+            int remaining = MAX_OTP_ATTEMPTS - record.getAttemptCount();
+            throw new IllegalArgumentException("Wrong OTP. " + remaining + " attempts remaining.");
+        }
+
+        // Set as verified
+        record.setVerified(true);
+        signupVerificationRepo.save(record);
+    }
+
+    // Step 3: Complete registration after OTP verification
     public SignupResponse registerUser(SignupRequest signupRequest) {
 
         // ====== 1. Null and Empty Checks ======
@@ -93,7 +247,7 @@ public class UserService {
 
         // ====== 6. Uniqueness Check ======
         if (usersRepo.findByUsername(usernameFinal).isPresent()) {
-         throw new IllegalArgumentException("Username already taken!");
+            throw new IllegalArgumentException("Username already taken!");
         }
         if (usersRepo.findByEmail(emailFinal).isPresent()) {
             throw new IllegalArgumentException("Email already registered!");
@@ -107,9 +261,17 @@ public class UserService {
             throw new IllegalArgumentException("Password cannot exceed 72 characters!");
         }
 
+        // ====== 8. Verification Check ======
+        SignupVerification verification = signupVerificationRepo.findByEmailId(emailFinal)
+            .orElseThrow(() -> new IllegalArgumentException("Email verification is pending. Please verify OTP first."));
+
+        if (!verification.isVerified()) {
+            throw new IllegalArgumentException("Email verification is pending. Please verify OTP first.");
+        }
+
+        // ====== 9. Create User and delete verification ======
         String passwordHashFinal = passwordHashing.hashPassword(signupRequest.getPassword());
 
-        // Final Store value set 
         Users user = new Users();
         user.setFullname(fullnameFinal);
         user.setUsername(usernameFinal);
@@ -118,7 +280,10 @@ public class UserService {
 
         Users savedUser = usersRepo.save(user);
 
-        // Generate JWT Token userId + Username
+        // Delete verification record after creation
+        signupVerificationRepo.delete(verification);
+
+        // ====== 10. Generate JWT ======
         String resToken = jwtUtils.generateToken(savedUser.getUserId(), savedUser.getUsername());
 
         SignupResponse resData = new SignupResponse();
@@ -127,9 +292,6 @@ public class UserService {
 
         return resData;
     }
-
-
-
 
     // Login validation
     public LoginResponse loginUser(LoginRequest loginRequest) {
@@ -204,9 +366,4 @@ public class UserService {
 
         return resData;
     }
-    // OTP Sending to Mail Account ...
-    public String otpSender(){
-        return "Send";
-    }
-    
 }
