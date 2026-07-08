@@ -204,5 +204,9 @@ public class UserService {
 
         return resData;
     }
+    // OTP Sending to Mail Account ...
+    public String otpSender(){
+        return "Send";
+    }
     
 }
