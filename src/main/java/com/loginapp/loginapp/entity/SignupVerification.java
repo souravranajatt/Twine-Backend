@@ -35,7 +35,7 @@ public class SignupVerification {
     private boolean isVerified = false;
 
     @Column(name="attempt_count", nullable = false)
-    private int attemptCount = 0;
+    private int attemptCount;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

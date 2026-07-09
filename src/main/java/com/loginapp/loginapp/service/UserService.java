@@ -2,7 +2,6 @@ package com.loginapp.loginapp.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +10,7 @@ import com.loginapp.loginapp.DTO.LoginResponse;
 import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
+import com.loginapp.loginapp.Utils.EmailSender;
 import com.loginapp.loginapp.Utils.JwtUtils;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.AccountSuspend;
@@ -35,7 +35,7 @@ public class UserService {
     private final PasswordHashing passwordHashing;
     private final AccountSuspendRepo accountSuspendRepo;
     private final SignupVerificationRepo signupVerificationRepo;
-    private final JavaMailSender mailSender;
+    private final EmailSender emailSender;
 
     @Value("${app.otp.expiry-minutes}")
     private int otpExpiryMinutes;
@@ -52,13 +52,13 @@ public class UserService {
 
     UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing,
                 AccountSuspendRepo accountSuspendRepo, SignupVerificationRepo signupVerificationRepo,
-                JavaMailSender mailSender) {
+                EmailSender emailSender) {
         this.usersRepo = usersRepo;
         this.jwtUtils = jwtUtils;
         this.passwordHashing = passwordHashing;
         this.accountSuspendRepo = accountSuspendRepo;
         this.signupVerificationRepo = signupVerificationRepo;
-        this.mailSender = mailSender;
+        this.emailSender = emailSender;
     }
 
 
@@ -70,6 +70,7 @@ public class UserService {
 
 
     // Step 1: Send OTP to email 
+    @Transactional
     public void sendOtp(SignupRequest signupRequest) {
 
         // ====== 1. Null and Empty Checks ======
@@ -133,11 +134,6 @@ public class UserService {
         // Hash the OTP using PasswordHashing utility
         String otpHashed = passwordHashing.hashPassword(otpPlain);
 
-        // ====== 9. Save OTP in SignupVerification table ======
-        
-        signupVerificationRepo.deleteByEmailId(emailFinal); // Delete previous verification records
-        signupVerificationRepo.flush(); // Sync the changes to the database
-
         SignupVerification record = new SignupVerification();
         record.setEmailId(emailFinal);
         record.setOtpHash(otpHashed);
@@ -145,25 +141,22 @@ public class UserService {
         record.setAttemptCount(0);
         record.setExpireAt(LocalDateTime.now(ZoneId.of("Asia/Kolkata")).plusMinutes(otpExpiryMinutes));
 
-        signupVerificationRepo.save(record);
+        // ====== 9. Build and send OTP email first ======
+        SimpleMailMessage mail = emailSender.buildOtpMessage(emailFinal, fullnameFinal, otpPlain);
+        boolean sent = emailSender.sendEmail(mail);
+        if (!sent) {
+            throw new IllegalArgumentException("Server Timeout, Failed to deliver OTP email.");
+        }
 
-        // ====== 10. Send OTP to Mail ======
-        SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setTo(emailFinal);
-        mail.setSubject("Twine - Verify Your Email");
-        mail.setText(
-            "Hi " + fullnameFinal + ",\n\n" +
-            "Your OTP code is: " + otpPlain + "\n\n" +
-            "This code is valid for " + otpExpiryMinutes + " minutes.\n" +
-            "Do not share this with anyone.\n\n" +
-            "- Twine Team"
-        );
-        mailSender.send(mail);
+        // ====== 10. Only save OTP record if email delivery succeeded ======
+        signupVerificationRepo.deleteByEmailId(emailFinal); // Delete previous verification records
+        signupVerificationRepo.save(record);
     }
 
 
 
     // Step 2: Verify the OTP code
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyOtp(OtpRequestDto otpRequestDto) {
 
         if (otpRequestDto.getEmail() == null || otpRequestDto.getEmail().trim().isEmpty()) {
@@ -206,6 +199,7 @@ public class UserService {
     }
 
     // Step 3: Complete registration after OTP verification
+    @Transactional
     public SignupResponse registerUser(SignupRequest signupRequest) {
 
         // ====== 1. Null and Empty Checks ======

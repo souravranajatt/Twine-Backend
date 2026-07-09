@@ -74,7 +74,7 @@ public class UserController {
         }
     }
 
-    // Step 2: Verify the OTP entered by the user
+    // Step 2: Verify the OTP 
     @PostMapping("/verify-otp")
     public ResponseEntity<SignupResponse> verifyOtp(@RequestBody OtpRequestDto otpRequestDto) {
         try {
