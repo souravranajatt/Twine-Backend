@@ -55,14 +55,17 @@ public class PostCategoryDetection {
 
     private String callGroq(Long postId, String fileName, String caption, String location, String contentType) throws Exception {
 
+        // Create an HTTP client
         HttpClient client = HttpClient.newHttpClient();
 
+        // check valdation for caption and location
         String captionText = (caption != null && !caption.isEmpty())
             ? caption : "no caption";
 
         String locationText = (location != null && !location.isEmpty())
             ? location : "";
 
+        // Read and Get image data as base64
         String imageInfo = "";
         if (contentType.startsWith("image/")) {
             try {
@@ -75,6 +78,7 @@ public class PostCategoryDetection {
             }
         }
 
+        // Prepare the prompt for Groq API
         String prompt = """
             Analyze this social media post and return ONLY a JSON object, no markdown, no extra text.
             

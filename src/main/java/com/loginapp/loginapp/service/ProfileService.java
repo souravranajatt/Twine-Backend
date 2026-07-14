@@ -174,7 +174,7 @@ public class ProfileService {
         Users loggedUser = authUtils.getLoggedUser();
 
         // Search User Found
-        Users userRes = usersRepo.findByUsername(username)
+        Users userRes = usersRepo.findByUsername(username.toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         // Check if user blocked the logged-in user
@@ -278,7 +278,7 @@ public class ProfileService {
         Users loggedUser = authUtils.getLoggedUser();
 
         // Search User Found
-        Users userRes = usersRepo.findByUsername(username)
+        Users userRes = usersRepo.findByUsername(username.toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (userRes.isStatusDeleted()) {
@@ -392,7 +392,7 @@ public class ProfileService {
         Users loggedUser = authUtils.getLoggedUser();
 
         // Search User Found
-        Users userRes = usersRepo.findByUsername(username)
+        Users userRes = usersRepo.findByUsername(username.toLowerCase())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (userRes.isStatusDeleted()) {

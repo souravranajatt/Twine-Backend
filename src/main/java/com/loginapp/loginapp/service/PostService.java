@@ -96,16 +96,16 @@ public class PostService {
     // ******************** POST UPLOAD ************************
     public PostUploadResponse uploadPost(PostUploadRequest postUploadRequest) throws IOException {
 
-        // 1️⃣ Get logged-in username from JWT
+        //  Get logged-in username from JWT
         Users user = authUtils.getLoggedUser();
 
-        // 2️⃣ Get the file
+        //  Get the file
         MultipartFile file = postUploadRequest.getFile();
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Select a photo or video!");
         }
 
-        // 3️⃣ File validations
+        // File validations
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("File size must be less than 50MB!");
         }
@@ -145,7 +145,7 @@ public class PostService {
         //  File bytes lo
         byte[] fileBytes = file.getBytes();
 
-        // 4️⃣ Save post entity
+        // Save post entity
         PostsEntity post = new PostsEntity();
         post.setUserpost(user);
         post.setPostCaption(postUploadRequest.getPostCaption());
@@ -170,7 +170,7 @@ public class PostService {
         String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + 
                           file.getOriginalFilename();
         String fileUrl = cloudinaryService.uploadFile(fileBytes, filename, contentType);
-        post.setFileName(fileUrl);   // ← Cloudinary URL save hoga
+        post.setFileName(fileUrl); 
 
         PostsEntity postsaved = postRepo.save(post);
 
@@ -217,7 +217,7 @@ public class PostService {
         // AI Detection
         postCategoryDetection.detectAndSaveCategory(postsaved, contentType);
 
-        // 5️⃣ Response
+        // Response
         PostUploadResponse response = new PostUploadResponse();
         response.setMessage("Post Uploaded!");
         return response;

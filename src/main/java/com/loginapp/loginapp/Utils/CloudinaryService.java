@@ -16,7 +16,7 @@ public class CloudinaryService {
         this.cloudinary = cloudinary;
     }
 
-    // ✅ Image/Video Upload
+    // Image/Video Upload
     public String uploadFile(byte[] fileBytes, String fileName, String contentType) throws IOException {
         
         String resourceType = contentType.startsWith("video/") ? "video" : "image";
@@ -32,7 +32,7 @@ public class CloudinaryService {
         return result.get("secure_url").toString();
     }
 
-    // ✅ File Delete
+    // File Delete
     public void deleteFile(String publicId) throws IOException {
         cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     }
