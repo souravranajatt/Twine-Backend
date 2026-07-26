@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -20,6 +21,9 @@ import jakarta.persistence.UniqueConstraint;
 @Table(name = "secret_crush_relation", 
     uniqueConstraints = {
         @UniqueConstraint(columnNames = {"user_one", "user_two"})
+    },
+    indexes = {
+        @Index(name = "idx_secret_crush_rel_two", columnList = "user_two")
     }
 )
 public class SecretCrushRelation {

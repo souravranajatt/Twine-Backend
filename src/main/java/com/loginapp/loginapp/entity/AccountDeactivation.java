@@ -8,7 +8,9 @@ import org.hibernate.annotations.GenericGenerator;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "account_deactivations")
+@Table(name = "account_deactivations", indexes = {
+    @Index(name = "idx_deactivation_user_id", columnList = "user_id")
+})
 public class AccountDeactivation {
 
     @Id

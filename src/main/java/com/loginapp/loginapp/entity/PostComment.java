@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -17,7 +18,11 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(
-    name = "post_comment"
+    name = "post_comment",
+    indexes = {
+        @Index(name = "idx_comment_post_id", columnList = "post_id"),
+        @Index(name = "idx_comment_parent_id", columnList = "parent_id")
+    }
 )
 public class PostComment {
 

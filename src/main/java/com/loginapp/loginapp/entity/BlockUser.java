@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -19,7 +20,10 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
     name = "block_user",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
+    uniqueConstraints = @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"}),
+    indexes = {
+        @Index(name = "idx_block_blocked_id", columnList = "blocked_id")
+    }
 )
 public class BlockUser {
     

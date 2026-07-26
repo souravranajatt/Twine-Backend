@@ -9,7 +9,14 @@ import jakarta.persistence.*;
 import java.util.*;
 
 @Entity
-@Table(name = "signup")
+@Table(
+    name = "signup",
+    indexes = {
+        @Index(name = "idx_username", columnList = "username"),
+        @Index(name = "idx_email", columnList = "email"),
+        @Index(name = "idx_fullname", columnList = "fullname")
+    }
+)
 public class Users {
 
     @Id

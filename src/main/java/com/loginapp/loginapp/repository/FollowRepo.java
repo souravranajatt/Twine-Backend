@@ -26,6 +26,8 @@ public interface FollowRepo extends JpaRepository<FollowUser, Long> {
     @Query("SELECT COUNT(f) FROM FollowUser f WHERE f.follower.userId = :userId AND f.following.statusDeleted = false")
     long countByFollower_UserId(@Param("userId") Long userId);
 
+
+    
     // Used in Home Feed Service for Finding Posts 
     @Query("SELECT f.following FROM FollowUser f WHERE f.follower = :user AND f.following.statusDeleted = false ")
     List<Users> findFollowingUsers(Users user);

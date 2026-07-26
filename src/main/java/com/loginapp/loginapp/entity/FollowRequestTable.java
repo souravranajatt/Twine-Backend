@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -21,6 +22,9 @@ import jakarta.persistence.UniqueConstraint;
     name = "follow_request",
     uniqueConstraints = {
         @UniqueConstraint(columnNames = {"sender_id", "receiver_id"})
+    },
+    indexes = {
+        @Index(name = "idx_follow_req_receiver_id", columnList = "receiver_id")
     }
 )
 public class FollowRequestTable {

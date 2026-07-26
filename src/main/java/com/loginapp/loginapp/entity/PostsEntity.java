@@ -10,7 +10,8 @@ import java.util.*;
 @Entity
 @Table(name = "user_post", indexes = {
         @Index(name = "idx_post_user_id", columnList = "user_id"),
-        @Index(name = "idx_post_upload_at", columnList = "upload_at")
+        @Index(name = "idx_post_upload_at", columnList = "upload_at"),
+        @Index(name = "idx_post_user_upload", columnList = "user_id, upload_at")
     })
 public class PostsEntity {
     

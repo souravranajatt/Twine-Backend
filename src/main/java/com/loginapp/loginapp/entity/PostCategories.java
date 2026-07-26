@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
@@ -16,7 +17,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "post_categories")
+@Table(name = "post_categories", indexes = {
+    @Index(name = "idx_post_cat_primary", columnList = "primary_category")
+})
 public class PostCategories {
 
     public enum Sentiment { POSITIVE, NEGATIVE, NEUTRAL }

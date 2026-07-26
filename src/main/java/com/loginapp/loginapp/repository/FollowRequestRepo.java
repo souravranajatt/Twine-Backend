@@ -4,6 +4,8 @@ import java.util.Optional;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.Users;
 
@@ -13,7 +15,14 @@ public interface FollowRequestRepo extends JpaRepository<FollowRequestTable, Lon
 
     Boolean existsBySenderIdAndReceiverId(Users sender, Users receiver);
 
-    List<FollowRequestTable> findByReceiverId(Users receiver);
+    @Query("""
+        SELECT r FROM FollowRequestTable r
+        JOIN FETCH r.senderId
+        WHERE r.receiverId = :receiver
+        AND r.senderId.statusDeleted = false
+        ORDER BY r.requestedOn DESC
+    """)
+    List<FollowRequestTable> findByReceiverId(@Param("receiver") Users receiver);
 
     void deleteBySenderIdAndReceiverId(Users sender, Users receiver);
 

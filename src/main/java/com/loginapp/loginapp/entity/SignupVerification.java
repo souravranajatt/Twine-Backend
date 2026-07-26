@@ -9,11 +9,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="signup_verification")
+@Table(name="signup_verification", indexes = {
+    @Index(name = "idx_signup_verif_email", columnList = "email_id")
+})
 public class SignupVerification {
 
     @Id
