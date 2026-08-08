@@ -12,6 +12,7 @@ import com.loginapp.loginapp.DTO.FollowListFetchDTO;
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
+import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
@@ -217,6 +218,17 @@ public class ProfileService {
         Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
                 savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
 
+        // Batch Fetch Blocked Users
+        List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
+            .stream()
+            .map(block -> block.getUserId())
+            .collect(Collectors.toList());
+
+        List<Long> blockedMe = blockRepo.findBlockedByUsers(loggedUser)
+            .stream()
+            .map(block -> block.getUserId())
+            .collect(Collectors.toList());
+
         for(PostsEntity post : posts){
 
             PostFetchDTO dto = new PostFetchDTO();
@@ -225,10 +237,47 @@ public class ProfileService {
             dto.setFetchFileName(post.getFileName());
             dto.setFetchPostLocation(post.getPostLocation());
             dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchTaggedUsers(post.getTaggedUsers());
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
             dto.setFetchVerified(userRes.isVerifyTag());
+
+            // Set Tagged Users
+            // 1. Find all tagged user for the post 
+            List<String> taggedUsersId = new ArrayList<>();
+            if(post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()){
+                for(String taggedUser : post.getTaggedUsers()){
+                    Long taggedUserId;
+                    try {
+                        taggedUserId = Long.valueOf(taggedUser);
+                    } catch (NumberFormatException e) {
+                        continue; // Ignore invalid tagged user IDs
+                    }
+
+                    // Check if tagged user is blocked by logged-in user or blocked logged-in user
+                    if(blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)){
+                        continue; // Skip this tagged user
+                    }
+                    // Add to the list of tagged users
+                    taggedUsersId.add(taggedUser);
+                }
+            }
+
+            // 2. Get the list of tagged users' details from the database
+            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
+
+            // 3. Convert to DTOs
+            List<TaggingResult> taggingResults = new ArrayList<>();
+            for(Users user : taggedUsers){
+                TaggingResult dtoTag = new TaggingResult();
+                dtoTag.setUserId(user.getUserId().toString());
+                dtoTag.setUsername(user.getUsername());
+                dtoTag.setVerify(user.isVerifyTag());
+                if (user.getUserData() != null) {
+                    dtoTag.setProfileImage(user.getUserData().getProfilePhoto());
+                }
+                taggingResults.add(dtoTag);
+            }
+            dto.setFetchTaggedUsers(taggingResults);
 
             // Set Post User Details
             dto.setFullname(post.getUserpost().getFullname());
@@ -336,6 +385,17 @@ public class ProfileService {
         Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
                 savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
 
+        // Batch Fetch Blocked Users
+        List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
+            .stream()
+            .map(block -> block.getUserId())
+            .collect(Collectors.toList());
+
+        List<Long> blockedMe = blockRepo.findBlockedByUsers(loggedUser)
+            .stream()
+            .map(block -> block.getUserId())
+            .collect(Collectors.toList());
+        
         for(PostsEntity post : posts){
 
             PostFetchDTO dto = new PostFetchDTO();
@@ -344,9 +404,47 @@ public class ProfileService {
             dto.setFetchFileName(post.getFileName());
             dto.setFetchPostLocation(post.getPostLocation());
             dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchTaggedUsers(post.getTaggedUsers());
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
+
+            // Set Tagged Users
+            // 1. Find all tagged user for the post 
+            List<String> taggedUsersId = new ArrayList<>();
+            if(post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()){
+                for(String taggedUser : post.getTaggedUsers()){
+                    Long taggedUserId;
+                    try {
+                        taggedUserId = Long.valueOf(taggedUser);
+                    } catch (NumberFormatException e) {
+                        continue; // Ignore invalid tagged user IDs
+                    }
+
+                    // Check if tagged user is blocked by logged-in user or blocked logged-in user
+                    if(blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)){
+                        continue; // Skip this tagged user
+                    }
+                    // Add to the list of tagged users
+                    taggedUsersId.add(taggedUser);
+                }
+            }
+
+            // 2. Get the list of tagged users' details from the database
+            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
+
+            // 3. Convert to DTOs
+            List<TaggingResult> taggingResults = new ArrayList<>();
+            for(Users user : taggedUsers){
+                TaggingResult dtoTag = new TaggingResult();
+                dtoTag.setUserId(user.getUserId().toString());
+                dtoTag.setUsername(user.getUsername());
+                dtoTag.setVerify(user.isVerifyTag());
+                if (user.getUserData() != null) {
+                    dtoTag.setProfileImage(user.getUserData().getProfilePhoto());
+                }
+                taggingResults.add(dtoTag);
+            }
+            dto.setFetchTaggedUsers(taggingResults);
+            
 
             // Set Post User Details
             dto.setFullname(post.getUserpost().getFullname());
@@ -399,17 +497,12 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
+        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(loggedUser.getUserId(), userRes.getUserId());
+
         // Check if user blocked the logged-in user
         Boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userRes, loggedUser);
         if (isBlocked) {
             throw new IllegalArgumentException("User not found");
-        }
-
-        boolean isFollowingPvt = followRepo.existsByFollower_UserIdAndFollowing_UserId(loggedUser.getUserId(), userRes.getUserId());
-
-        //  self check 
-        if(userRes.getUserId().equals(loggedUser.getUserId())){
-            isFollowingPvt = true;
         }
 
         // check if user is private and not following or if logged user blocked the search user then return nothing
@@ -417,6 +510,12 @@ public class ProfileService {
         if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
             return Collections.emptyList();
         }
+
+        //  self check 
+        if(userRes.getUserId().equals(loggedUser.getUserId())){
+            isFollowingPvt = true;
+        }
+
 
         // check if postowner blocked me or blocked by me them return nothing
         List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
@@ -432,7 +531,7 @@ public class ProfileService {
 
         Pageable pageable = PageRequest.of(page, 10);
 
-        List<PostsEntity> posts = postRepo.findTaggedPosts(userRes.getUsername(), pageable);
+        List<PostsEntity> posts = postRepo.findTaggedPosts(String.valueOf(userRes.getUserId()), pageable);
 
         List<PostFetchDTO> postsList = new ArrayList<>();
 
@@ -475,10 +574,47 @@ public class ProfileService {
             dto.setFetchFileName(post.getFileName());
             dto.setFetchPostLocation(post.getPostLocation());
             dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchTaggedUsers(post.getTaggedUsers());
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
             dto.setFetchVerified(userRes.isVerifyTag());
+
+            // Set Tagged Users
+            // 1. Find all tagged user for the post 
+            List<String> taggedUsersId = new ArrayList<>();
+            if(post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()){
+                for(String taggedUser : post.getTaggedUsers()){
+                    Long taggedUserId;
+                    try {
+                        taggedUserId = Long.valueOf(taggedUser);
+                    } catch (NumberFormatException e) {
+                        continue; // Ignore invalid tagged user IDs
+                    }
+
+                    // Check if tagged user is blocked by logged-in user or blocked logged-in user
+                    if(blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)){
+                        continue; // Skip this tagged user
+                    }
+                    // Add to the list of tagged users
+                    taggedUsersId.add(taggedUser);
+                }
+            }
+
+            // 2. Get the list of tagged users' details from the database
+            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
+
+            // 3. Convert to DTOs
+            List<TaggingResult> taggingResults = new ArrayList<>();
+            for(Users user : taggedUsers){
+                TaggingResult dtoTag = new TaggingResult();
+                dtoTag.setUserId(user.getUserId().toString());
+                dtoTag.setUsername(user.getUsername());
+                dtoTag.setVerify(user.isVerifyTag());
+                if (user.getUserData() != null) {
+                    dtoTag.setProfileImage(user.getUserData().getProfilePhoto());
+                }
+                taggingResults.add(dtoTag);
+            }
+            dto.setFetchTaggedUsers(taggingResults);
 
             // Set Post User Details
             dto.setFullname(post.getUserpost().getFullname());

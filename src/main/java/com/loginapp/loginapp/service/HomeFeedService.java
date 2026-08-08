@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostFetchDTO;
+import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
@@ -30,6 +31,7 @@ public class HomeFeedService {
     private final SavedPostRepo savedPostRepo;
     private final PostSeenRepo postSeenRepo;
     private final AuthUtils authUtils;
+    private final UsersRepo usersRepo;
 
     HomeFeedService(
         FollowRepo followRepo,
@@ -39,7 +41,8 @@ public class HomeFeedService {
         PostLikeRepo postLikeRepo,
         HomeFeedRepo homeFeedRepo,
         SavedPostRepo savedPostRepo,
-        PostSeenRepo postSeenRepo
+        PostSeenRepo postSeenRepo,
+        UsersRepo usersRepo
     ){
         this.followRepo = followRepo;
         this.authUtils = authUtils;
@@ -49,6 +52,7 @@ public class HomeFeedService {
         this.homeFeedRepo = homeFeedRepo;
         this.savedPostRepo = savedPostRepo;
         this.postSeenRepo = postSeenRepo;
+        this.usersRepo = usersRepo;
     }
 
     public List<PostFetchDTO> getHomeFeed(int page) {
@@ -186,6 +190,36 @@ public class HomeFeedService {
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
+
+            // Tagged Users
+            List<String> taggedUsersId = new ArrayList<>();
+            if (post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()) {
+                for (String taggedUser : post.getTaggedUsers()) {
+                    Long taggedUserId;
+                    try {
+                        taggedUserId = Long.valueOf(taggedUser);
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                    if (blockedIds.contains(taggedUserId)) {
+                        continue;
+                    }
+                    taggedUsersId.add(taggedUser);
+                }
+            }
+            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
+            List<TaggingResult> taggingResults = new ArrayList<>();
+            for (Users u : taggedUsers) {
+                TaggingResult dtoTag = new TaggingResult();
+                dtoTag.setUserId(u.getUserId().toString());
+                dtoTag.setUsername(u.getUsername());
+                dtoTag.setVerify(u.isVerifyTag());
+                if (u.getUserData() != null) {
+                    dtoTag.setProfileImage(u.getUserData().getProfilePhoto());
+                }
+                taggingResults.add(dtoTag);
+            }
+            dto.setFetchTaggedUsers(taggingResults);
 
             // Stats
             dto.setLikeCount(post.getLikeCount());

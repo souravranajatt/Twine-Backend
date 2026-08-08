@@ -104,10 +104,29 @@ public class UserService {
         if (!USERNAME_PATTERN.matcher(usernameFinal).matches()) {
             throw new IllegalArgumentException("Username can only contain lowercase letters, digits, '.', and '_' !");
         }
+        if (usernameFinal.startsWith(".")) {
+            throw new IllegalArgumentException("Username cannot start with a period!");
+        }
+        if (usernameFinal.endsWith(".")) {
+            throw new IllegalArgumentException("Username cannot end with a period!");
+        }
+        if (usernameFinal.contains("..")) {
+            throw new IllegalArgumentException("Username cannot have consecutive periods!");
+        }
 
         // ====== 5. Email Validation ======
         if (!EMAIL_PATTERN.matcher(emailFinal).matches()) {
             throw new IllegalArgumentException("Enter a valid email address!");
+        }
+        String emailLocalPart = emailFinal.split("@")[0];
+        if (emailLocalPart.startsWith(".")) {
+            throw new IllegalArgumentException("Email cannot start with a period!");
+        }
+        if (emailLocalPart.endsWith(".")) {
+            throw new IllegalArgumentException("Email cannot end with a period!");
+        }
+        if (emailLocalPart.contains("..")) {
+            throw new IllegalArgumentException("Email cannot have consecutive periods!");
         }
 
         // ====== 6. Uniqueness Check ======
@@ -233,10 +252,29 @@ public class UserService {
         if (!USERNAME_PATTERN.matcher(usernameFinal).matches()) {
             throw new IllegalArgumentException("Username can only contain lowercase letters, digits, '.', and '_' !");
         }
+        if (usernameFinal.startsWith(".")) {
+            throw new IllegalArgumentException("Username cannot start with a period!");
+        }
+        if (usernameFinal.endsWith(".")) {
+            throw new IllegalArgumentException("Username cannot end with a period!");
+        }
+        if (usernameFinal.contains("..")) {
+            throw new IllegalArgumentException("Username cannot have consecutive periods!");
+        }
 
         // ====== 5. Email Validation ======
         if (!EMAIL_PATTERN.matcher(emailFinal).matches()) {
             throw new IllegalArgumentException("Enter a valid email address!");
+        }
+        String emailLocalPart = emailFinal.split("@")[0];
+        if (emailLocalPart.startsWith(".")) {
+            throw new IllegalArgumentException("Email cannot start with a period!");
+        }
+        if (emailLocalPart.endsWith(".")) {
+            throw new IllegalArgumentException("Email cannot end with a period!");
+        }
+        if (emailLocalPart.contains("..")) {
+            throw new IllegalArgumentException("Email cannot have consecutive periods!");
         }
 
         // ====== 6. Uniqueness Check ======

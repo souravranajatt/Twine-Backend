@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.DTO;
 
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 public class PostUploadRequest {
 
@@ -8,6 +9,7 @@ public class PostUploadRequest {
     private int postTimelineUser;
     private MultipartFile file;
     private String photoLocation;
+    private List<String> taggedUsers;
 
     // Getter and Setter
 
@@ -34,6 +36,12 @@ public class PostUploadRequest {
     }
     public void setPhotoLocation(String photoLocation) {
         this.photoLocation = photoLocation;
+    }
+    public List<String> getTaggedUsers() {
+        return taggedUsers;
+    }
+    public void setTaggedUsers(List<String> taggedUsers) {
+        this.taggedUsers = taggedUsers;
     }
     
 }

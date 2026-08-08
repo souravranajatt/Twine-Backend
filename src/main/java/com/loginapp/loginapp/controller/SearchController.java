@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
+import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.DTO.UserSearchDTO;
 import com.loginapp.loginapp.service.SearchService;
 
@@ -20,13 +21,30 @@ public class SearchController {
         this.searchService = searchService;
     }
 
+    // User Search Endpoint
     @GetMapping("/search")
     public ResponseEntity<List<UserSearchDTO>> searchUsers(@RequestParam String query) {
         try {
             List<UserSearchDTO> results = searchService.searchUsers(query);
             return ResponseEntity.ok(results);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        }catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+        
+    }
+
+    // User Search for Tagging Endpoint
+    @GetMapping("/search/tagging")
+    public ResponseEntity<List<TaggingResult>> searchUsersForTagging(@RequestParam String query) {
+        try {
+            List<TaggingResult> results = searchService.searchUsersForTagging(query);
+            return ResponseEntity.ok(results);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }catch (Exception e) {
+            return ResponseEntity.status(500).build();
         }
     }
 }

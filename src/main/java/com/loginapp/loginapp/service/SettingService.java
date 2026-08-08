@@ -1,5 +1,6 @@
 package com.loginapp.loginapp.service;
 
+import java.util.*;
 import java.util.regex.Pattern;
 
 import org.springframework.data.domain.PageRequest;
@@ -14,6 +15,7 @@ import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
+import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.DefaultSetting;
@@ -160,6 +162,15 @@ public class SettingService {
         }
         if (!USERNAME_PATTERN.matcher(usernameFinal).matches()) {
             throw new IllegalArgumentException("Username can only contain lowercase letters, digits, '.', and '_' !");
+        }
+        if (usernameFinal.startsWith(".")) {
+            throw new IllegalArgumentException("Username cannot start with a period!");
+        }
+        if (usernameFinal.endsWith(".")) {
+            throw new IllegalArgumentException("Username cannot end with a period!");
+        }
+        if (usernameFinal.contains("..")) {
+            throw new IllegalArgumentException("Username cannot have consecutive periods!");
         }
         if (!user.getUsername().equals(usernameFinal) && usersRepo.findByUsername(usernameFinal).isPresent()) {
          throw new IllegalArgumentException("Username already taken!");
@@ -514,6 +525,68 @@ public class SettingService {
     }
 
 
+    // ------- Tagging & Mention Preferences ------
+
+    // Update Tagging Preference (Who can tag you)
+    public String updateTaggingPreference(String visibility) {
+        Users user = authUtils.getLoggedUser();
+
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        SettingPreferences.PreferenceVisibility preference;
+        if ("EVERYONE".equalsIgnoreCase(visibility)) {
+            preference = SettingPreferences.PreferenceVisibility.EVERYONE;
+        } else if ("FOLLOWING_ONLY".equalsIgnoreCase(visibility)) {
+            preference = SettingPreferences.PreferenceVisibility.FOLLOWING_ONLY;
+        } else if ("NO_ONE".equalsIgnoreCase(visibility)) {
+            preference = SettingPreferences.PreferenceVisibility.NO_ONE;
+        } else {
+            throw new IllegalArgumentException("Invalid visibility value! Must be: EVERYONE, FOLLOWING_ONLY, or NO_ONE");
+        }
+
+        if (settingPreferences.getTaggingEnable() == preference) {
+            return "Tagging preference is already set to " + visibility;
+        }
+
+        settingPreferences.setTaggingEnable(preference);
+        settingPreferencesRepo.save(settingPreferences);
+
+        return "Tagging preference updated to " + visibility;
+    }
+
+    // Update Mention Preference (Who can mention you)
+    public String updateMentionPreference(String visibility) {
+        Users user = authUtils.getLoggedUser();
+
+        SettingPreferences settingPreferences = settingPreferencesRepo.findByUser(user);
+        if (settingPreferences == null) {
+            settingPreferences = defaultSetting.createDefaultSettingPreferences();
+        }
+
+        SettingPreferences.PreferenceVisibility preference;
+        if ("EVERYONE".equalsIgnoreCase(visibility)) {
+            preference = SettingPreferences.PreferenceVisibility.EVERYONE;
+        } else if ("FOLLOWING_ONLY".equalsIgnoreCase(visibility)) {
+            preference = SettingPreferences.PreferenceVisibility.FOLLOWING_ONLY;
+        } else if ("NO_ONE".equalsIgnoreCase(visibility)) {
+            preference = SettingPreferences.PreferenceVisibility.NO_ONE;
+        } else {
+            throw new IllegalArgumentException("Invalid visibility value! Must be: EVERYONE, FOLLOWING_ONLY, or NO_ONE");
+        }
+
+        if (settingPreferences.getMentionEnable() == preference) {
+            return "Mention preference is already set to " + visibility;
+        }
+
+        settingPreferences.setMentionEnable(preference);
+        settingPreferencesRepo.save(settingPreferences);
+
+        return "Mention preference updated to " + visibility;
+    }
+
 
     // ======================== Security Service Modules =============================
 
@@ -627,6 +700,38 @@ public class SettingService {
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
+
+            // Tagged Users
+            Set<Long> allBlockedIds = new HashSet<>(blockedUserIds);
+            allBlockedIds.addAll(blockedByUserIds);
+            List<String> taggedUsersId = new ArrayList<>();
+            if (post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()) {
+                for (String taggedUser : post.getTaggedUsers()) {
+                    Long taggedUserId;
+                    try {
+                        taggedUserId = Long.valueOf(taggedUser);
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                    if (allBlockedIds.contains(taggedUserId)) {
+                        continue;
+                    }
+                    taggedUsersId.add(taggedUser);
+                }
+            }
+            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
+            List<TaggingResult> taggingResults = new ArrayList<>();
+            for (Users u : taggedUsers) {
+                TaggingResult dtoTag = new TaggingResult();
+                dtoTag.setUserId(u.getUserId().toString());
+                dtoTag.setUsername(u.getUsername());
+                dtoTag.setVerify(u.isVerifyTag());
+                if (u.getUserData() != null) {
+                    dtoTag.setProfileImage(u.getUserData().getProfilePhoto());
+                }
+                taggingResults.add(dtoTag);
+            }
+            dto.setFetchTaggedUsers(taggingResults);
 
             // Stats
             dto.setLikeCount(post.getLikeCount());

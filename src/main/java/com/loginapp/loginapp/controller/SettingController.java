@@ -16,6 +16,7 @@ import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
+import com.loginapp.loginapp.DTO.VisibilityUpdateDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -116,7 +117,7 @@ public class SettingController {
 
 
 
-    // Private Account Update End Point
+    // 1. Private Account Update End Point
     @PatchMapping("/privacy/private-account")
     public ResponseEntity<?> profilePrivacyPrivateUpdateSetting(@RequestBody Boolean isPrivate){
         try{
@@ -129,7 +130,7 @@ public class SettingController {
         }
     }
 
-    // Block User End Point
+    // 2. Block User End Point
     @GetMapping("/privacy/block-list")
     public ResponseEntity<?> fetchBlockList() {
         try{
@@ -142,7 +143,7 @@ public class SettingController {
         }
     }
 
-    // Fetch Intreaction Settings End Point
+    // 3. Fetch Intreaction Settings End Point
     @GetMapping("/privacy/intreaction-settings")
     public ResponseEntity<?> fetchIntreactionSettings() {
         try{
@@ -199,6 +200,32 @@ public class SettingController {
     public ResponseEntity<?> turnOnCommentingDefaultSetting() {
         try{
             String result = settingService.turnOnCommentingDefaultSetting();
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Update Tagging Preference (Who can tag you) End Point
+    @PatchMapping("/privacy/tagging-preference")
+    public ResponseEntity<?> updateTaggingPreference(@RequestBody VisibilityUpdateDTO request) {
+        try{
+            String result = settingService.updateTaggingPreference(request.getVisibility());
+            return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Update Mention Preference (Who can mention you) End Point
+    @PatchMapping("/privacy/mention-preference")
+    public ResponseEntity<?> updateMentionPreference(@RequestBody VisibilityUpdateDTO request) {
+        try{
+            String result = settingService.updateMentionPreference(request.getVisibility());
             return ResponseEntity.ok(result);
         }catch(IllegalArgumentException err){
             return ResponseEntity.badRequest().body(err.getMessage());

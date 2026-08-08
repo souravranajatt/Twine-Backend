@@ -47,6 +47,9 @@ public class PostsEntity {
     @Column(name = "timeline_user")
     private Long timelineUser;
 
+
+    // Insight Fields
+
     @Column(name = "like_count", columnDefinition = "BIGINT DEFAULT 0")
     private Long likeCount = 0L;
 
@@ -59,6 +62,8 @@ public class PostsEntity {
     @Column(name = "view_count", columnDefinition = "BIGINT DEFAULT 0")
     private Long viewCount = 0L;
 
+    // Post Settings
+
     @Column(name = "comment_enabled")
     private Boolean commentEnabled = true;
 
@@ -68,9 +73,13 @@ public class PostsEntity {
     @Column(name = "share_enabled")
     private Boolean shareEnabled = true;
 
+    // Post Upload Timestamp
+
     @Column(name = "upload_at", nullable = false, updatable = false)
     private LocalDateTime uploadAt;
 
+
+    // Relationships
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private Users userpost;

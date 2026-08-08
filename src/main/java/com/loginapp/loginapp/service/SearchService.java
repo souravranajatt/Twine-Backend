@@ -2,8 +2,11 @@ package com.loginapp.loginapp.service;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
+import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.DTO.UserSearchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.entity.SettingPreferences;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
@@ -165,6 +168,77 @@ public class SearchService {
         }
         return results;
         
+    }
+
+    // Search users for tagging by username or fullname
+    public List<TaggingResult> searchUsersForTagging(String query) {
+        
+        // Get Logged User Info
+        Users loggedUser = authUtils.getLoggedUser();
+
+        // Clean Query trim, lowercase, remove leading '@'
+        String cleanQuery = query.trim().toLowerCase().replaceAll("^@+", "");
+        if (cleanQuery.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Now Get Users from the repository based on the query
+        List<Users> users = usersRepo.findSearchUsersForTagging(cleanQuery, PageRequest.of(0, 20));
+        List<Users> filtreResults = new ArrayList<>();
+
+         // Now check User is blocked or not 
+        Set<Long> blockUserIds = new HashSet<>();
+        blockRepo.findBlockedUserIds(loggedUser).forEach(blockUserIds::add); // Add all users blocked by the logged user
+        blockRepo.findBlockedByUserIds(loggedUser).forEach(blockUserIds::add); // Add all users who have blocked the logged user
+
+        // Filter out blocked users from the search results
+        for (Users user : users) {
+            if (!blockUserIds.contains(user.getUserId()) &&
+                !user.getUserId().equals(loggedUser.getUserId())) {
+                filtreResults.add(user);
+            }
+        }
+
+        // Now get all filtered userid ...
+        List<Long> filteredUserIds = new ArrayList<>();
+        for(Users user : filtreResults){
+            filteredUserIds.add(user.getUserId());
+        }
+
+        // Find all following ids for the logged user
+        Set<Long> followingUserIds = new HashSet<>();
+        followRepo.findFollowingIds(loggedUser, filteredUserIds).forEach(followingUserIds::add);
+
+        // Convert to DTOs
+        List<TaggingResult> results = new ArrayList<>();
+
+        for (Users user : filtreResults) {
+            if (!user.getUserId().equals(loggedUser.getUserId())) {
+                TaggingResult dto = new TaggingResult();
+                dto.setUserId(user.getUserId().toString());
+                dto.setUsername(user.getUsername());
+                if (user.getUserData() != null) {
+                    dto.setProfileImage(user.getUserData().getProfilePhoto());
+                }
+                if (user.getSetting() != null) {
+                    SettingPreferences.PreferenceVisibility taggingPref = user.getSetting().getTaggingEnable();
+                    if (taggingPref == SettingPreferences.PreferenceVisibility.EVERYONE
+                        || (taggingPref == SettingPreferences.PreferenceVisibility.FOLLOWING_ONLY
+                            && followingUserIds.contains(user.getUserId()))) {
+                        dto.setAllowTagging(true);
+                    } else if (taggingPref == SettingPreferences.PreferenceVisibility.NO_ONE) {
+                        dto.setAllowTagging(false);
+                    } else {
+                        dto.setAllowTagging(true);
+                    }
+                } else {
+                    dto.setAllowTagging(true);
+                }
+                results.add(dto);
+            }
+        }
+
+        return results;
     }
 
     // Helper class

@@ -11,7 +11,7 @@ public class SettingPreferences {
 
     public enum PreferenceVisibility {
         EVERYONE,
-        FOLLOWERS_ONLY,
+        FOLLOWING_ONLY,
         NO_ONE
     }
 

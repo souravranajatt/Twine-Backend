@@ -10,7 +10,7 @@ public class PostFetchDTO {
     private String fetchFileName;
     private String fetchPostLocation;
     private String fetchPostCaption;
-    private List<String> fetchTaggedUsers;
+    private List<TaggingResult> fetchTaggedUsers;
     private String fetchTimelineUser;
     private LocalDateTime fetchUploadAt;
 
@@ -75,10 +75,10 @@ public class PostFetchDTO {
     public void setFetchPostCaption(String fetchPostCaption) {
         this.fetchPostCaption = fetchPostCaption;
     }
-    public List<String> getFetchTaggedUsers() {
+    public List<TaggingResult> getFetchTaggedUsers() {
         return fetchTaggedUsers;
     }
-    public void setFetchTaggedUsers(List<String> fetchTaggedUsers) {
+    public void setFetchTaggedUsers(List<TaggingResult> fetchTaggedUsers) {
         this.fetchTaggedUsers = fetchTaggedUsers;
     }
     public String getFetchTimelineUser() {

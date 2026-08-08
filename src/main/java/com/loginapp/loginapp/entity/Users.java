@@ -62,6 +62,10 @@ public class Users {
     @OneToOne(mappedBy = "users", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private UserData userData;
 
+    // Adding a one-to-one relationship with SettingPreferences
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private SettingPreferences setting;
+
     public Users() {
         // Default constructor
     }
@@ -133,5 +137,15 @@ public class Users {
     public void setStatusSuspend(boolean statusSuspend) {
         this.statusSuspend = statusSuspend;
     }
+
+    public SettingPreferences getSetting() {
+        return setting;
+    }
+
+    public void setSetting(SettingPreferences setting) {
+        this.setting = setting;
+    }
+
+    
     
 }

@@ -47,12 +47,12 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 SELECT p FROM PostsEntity p
                 LEFT JOIN FETCH p.postMedia
                 JOIN FETCH p.userpost
-                WHERE :username MEMBER OF p.taggedUsers
+                WHERE :userId MEMBER OF p.taggedUsers
                 AND p.postVisiblity = true
                 AND p.userpost.statusDeleted = false
                 ORDER BY p.uploadAt DESC
                 """)
-        List<PostsEntity> findTaggedPosts(@Param("username") String username, Pageable page);
+        List<PostsEntity> findTaggedPosts(@Param("userId") String userId, Pageable page);
 
         @Query("""
                 SELECT p FROM PostsEntity p
