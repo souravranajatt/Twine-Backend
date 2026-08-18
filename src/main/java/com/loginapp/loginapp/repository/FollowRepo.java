@@ -58,4 +58,18 @@ public interface FollowRepo extends JpaRepository<FollowUser, Long> {
         AND f.following.statusDeleted = false
     """)
     Set<Long> findFollowingIds(@Param("user") Users user, @Param("ids") List<Long> ids);
+
+    
+    // Mutual suggestion query (2-hop graph traversal)
+    @Query("""
+        SELECT f.following, COUNT(f.follower) FROM FollowUser f
+        WHERE f.follower IN :followingUsers
+        AND f.following != :user
+        AND f.following NOT IN :followingUsers
+        AND f.following.statusDeleted = false
+        AND f.following.statusSuspend = false
+        GROUP BY f.following
+        ORDER BY COUNT(f.follower) DESC
+    """)
+    List<Object[]> findSuggestedUsersByMutuals(@Param("user") Users user, @Param("followingUsers") List<Users> followingUsers, Pageable pageable);
 }

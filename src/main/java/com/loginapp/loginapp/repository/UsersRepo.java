@@ -51,5 +51,23 @@ public interface UsersRepo extends JpaRepository<Users, Long> {
     """)
     List<Users> findTaggedUsersByIds(@Param("userIds") List<String> userIds);
 
+    // Suggestion User List Query 
+    @Query("""
+        SELECT u FROM Users u
+        WHERE u != :user
+        AND u NOT IN :followingUsers
+        AND u.statusDeleted = false
+        AND u.statusSuspend = false
+        ORDER BY u.createdAt DESC
+    """)
+    List<Users> findRecentUsersExcludingFollowing(@Param("user") Users user, @Param("followingUsers") List<Users> followingUsers, Pageable pageable);
 
+    @Query("""
+        SELECT u FROM Users u
+        WHERE u != :user
+        AND u.statusDeleted = false
+        AND u.statusSuspend = false
+        ORDER BY u.createdAt DESC
+    """)
+    List<Users> findRecentUsersForSuggestion(@Param("user") Users user, Pageable pageable);
 }
