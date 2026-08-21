@@ -620,6 +620,7 @@ public class ProfileService {
             dto.setFullname(post.getUserpost().getFullname());
             dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
             dto.setUsername(post.getUserpost().getUsername());
+            dto.setFetchVerified(post.getUserpost().isVerifyTag());
             if(post.getUserpost().getUserData() != null){
                 dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
             }
