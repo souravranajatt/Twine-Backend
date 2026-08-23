@@ -67,7 +67,10 @@ public class ProfileService {
         this.authUtils = authUtils;
     }
 
-    // Fetch search profile securely 
+
+
+    // ************** Fetch search profile securely ***************
+    
     public SearchUserResponse userProfile(String username) {
 
         // 1️⃣ Get logged-in user
@@ -653,6 +656,9 @@ public class ProfileService {
         return postsList;
     }
 
+
+
+    
     // Fetch Follower List with pagination
     public List<FollowListFetchDTO> followerListFetch(Long targetUserId, int page) {
 

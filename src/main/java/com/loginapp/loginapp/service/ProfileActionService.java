@@ -58,7 +58,7 @@ public class ProfileActionService {
         Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
-        if (userTwo.isStatusDeleted())
+        if (userTwo.isStatusDeleted() || userTwo.isStatusSuspend())
             throw new IllegalArgumentException("User is not available!");
 
         if (userOne.getUserId().equals(userTwo.getUserId()))
@@ -104,7 +104,7 @@ public class ProfileActionService {
         Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
-        if (userTwo.isStatusDeleted())
+        if (userTwo.isStatusDeleted() || userTwo.isStatusSuspend())
             throw new IllegalArgumentException("User is not available!");
 
         if (userOne.getUserId().equals(userTwo.getUserId()))
@@ -127,7 +127,7 @@ public class ProfileActionService {
         Users userTwo = usersRepo.findByUserId(targetUserId)
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
-        if (userTwo.isStatusDeleted())
+        if (userTwo.isStatusDeleted() || userTwo.isStatusSuspend())
             throw new IllegalArgumentException("User is not available!");
 
         if (userOne.getUserId().equals(userTwo.getUserId()))
@@ -137,6 +137,68 @@ public class ProfileActionService {
         FollowRequestTable req = followRequestRepo.findBySenderIdAndReceiverId(userOne, userTwo)
                                 .orElseThrow(() -> new IllegalArgumentException("No request found!"));
 
+        followRequestRepo.delete(req);
+    }
+
+    /* Follow Request accept or reject */
+
+    // Follow Request accept logic
+    public void acceptFollowRequest(Long targetUserId) {
+        
+        // Get logged user details from security context
+        Users userOne = authUtils.getLoggedUser();
+
+        Users userTwo = usersRepo.findByUserId(targetUserId)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        if (userTwo.isStatusDeleted() || userTwo.isStatusSuspend())
+            throw new IllegalArgumentException("User is not available!");
+
+        if(!userOne.isStatusPrivate()){
+            throw new IllegalArgumentException("Action not allowed!");
+        }
+
+        if (userOne.getUserId().equals(userTwo.getUserId()))
+            throw new IllegalArgumentException("Invalid action!");
+
+        // Check request exists
+        FollowRequestTable req = followRequestRepo.findBySenderIdAndReceiverId(userTwo, userOne)
+                                .orElseThrow(() -> new IllegalArgumentException("No request found!"));
+
+        // Create follow relationship
+        FollowUser follow = new FollowUser();
+        follow.setFollower(userTwo);
+        follow.setFollowing(userOne);
+        followRepo.save(follow);
+
+        // Delete the request
+        followRequestRepo.delete(req);
+    }
+
+    // Reject Follow Request logic
+    public void rejectFollowRequest(Long targetUserId) {
+    
+        // Get logged user details from security context
+        Users userOne = authUtils.getLoggedUser();
+
+        Users userTwo = usersRepo.findByUserId(targetUserId)
+                            .orElseThrow(() -> new IllegalArgumentException("User not found!"));
+
+        if (userTwo.isStatusDeleted() || userTwo.isStatusSuspend())
+            throw new IllegalArgumentException("User is not available!");
+
+        if(!userOne.isStatusPrivate()){
+            throw new IllegalArgumentException("Action not allowed!");
+        }
+
+        if (userOne.getUserId().equals(userTwo.getUserId()))
+            throw new IllegalArgumentException("Invalid action!");
+
+        // Check request exists
+        FollowRequestTable req = followRequestRepo.findBySenderIdAndReceiverId(userTwo, userOne)
+                                .orElseThrow(() -> new IllegalArgumentException("No request found!"));
+
+        // Delete the request
         followRequestRepo.delete(req);
     }
 
@@ -153,7 +215,7 @@ public class ProfileActionService {
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
         // Check search user id is soft deactivate or not 
-        if(userTwo.isStatusDeleted()){
+        if(userTwo.isStatusDeleted() || userTwo.isStatusSuspend()){
             throw new IllegalArgumentException("User is not available!");   
         }
         // Check both user are same or not
@@ -214,7 +276,7 @@ public class ProfileActionService {
                             .orElseThrow(() -> new IllegalArgumentException("User not found!"));
 
         // Check search user id is soft deactivate or not 
-        if(userTwo.isStatusDeleted()){
+        if(userTwo.isStatusDeleted() || userTwo.isStatusSuspend()){
             throw new IllegalArgumentException("User is not available!");   
         }
         
@@ -248,7 +310,7 @@ public class ProfileActionService {
 
 
         // Check search user id is soft deactivate or not 
-        if(userTwo.isStatusDeleted()){
+        if(userTwo.isStatusDeleted() || userTwo.isStatusSuspend()){
             throw new IllegalArgumentException("User is not available!");   
         }
 

@@ -236,7 +236,7 @@ public class PostService {
     // ******************** POST RELATED CONTENT FETCHING ************************
 
 
-    // Fetch Post 
+    // Fetch Single Post 
     public PostFetchDTO fetchPost(Long postId) {
 
         // Get Logged User

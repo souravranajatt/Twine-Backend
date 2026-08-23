@@ -63,6 +63,32 @@ public class ProfileActionController {
         }
     }
 
+    // Accept Request
+    @PostMapping("/user/follow/accept/{targetUserId}")
+    public ResponseEntity<?> acceptFollowRequest(@PathVariable Long targetUserId) {
+        try {
+            profileActionService.acceptFollowRequest(targetUserId);
+            return ResponseEntity.ok("Request accepted!");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    // Reject Request
+    @DeleteMapping("/user/follow/reject/{targetUserId}")
+    public ResponseEntity<?> rejectFollowRequest(@PathVariable Long targetUserId) {
+        try {
+            profileActionService.rejectFollowRequest(targetUserId);
+            return ResponseEntity.ok("Request rejected!");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
     // Block User Endpoint
     @PostMapping("/user/block/{targetUserId}")
     public ResponseEntity<?> blockUserAction(@PathVariable Long targetUserId) {
