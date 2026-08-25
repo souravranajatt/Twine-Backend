@@ -10,6 +10,7 @@ public class FollowListFetchDTO {
     private Boolean followedByMe;
     private Boolean verify;
     private Boolean isMe;
+    private Boolean isPrivate;
 
     // Getters & Setters
     public String getUsername() { return username; }
@@ -35,4 +36,7 @@ public class FollowListFetchDTO {
 
     public Boolean getIsMe() { return isMe; }
     public void setIsMe(Boolean isMe) { this.isMe = isMe; }
+
+    public Boolean getIsPrivate() { return isPrivate; }
+    public void setIsPrivate(Boolean isPrivate) { this.isPrivate = isPrivate; }
 }

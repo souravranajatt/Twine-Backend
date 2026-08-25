@@ -56,7 +56,7 @@ public class UserSuggestionService {
 
         LinkedHashMap<Long, Users> candidateMap = new LinkedHashMap<>();
 
-        // Stage 1: 2-Hop Graph Traversal (Mutual Friends)
+        //  2-Hop Graph Traversal (Mutual Friends)
         if (!myFollowing.isEmpty()) {
             Pageable pageable = PageRequest.of(page, Math.max(size * 2, 20));
             List<Object[]> mutualResults = followRepo.findSuggestedUsersByMutuals(loggedUser, myFollowing, pageable);
@@ -73,7 +73,7 @@ public class UserSuggestionService {
             }
         }
 
-        // Stage 2: Fallback to active recent users if candidates are below requested size
+        // Fallback to active recent users 
         if (candidateMap.size() < size) {
             Pageable fallbackPageable = PageRequest.of(page, Math.max(size * 3, 30));
             List<Users> recentUsers;
@@ -98,7 +98,7 @@ public class UserSuggestionService {
             return Collections.emptyList();
         }
 
-        // Collect candidate IDs to check who follows the logged-in user
+        // check who follows the logged-in user
         List<Long> candidateIds = new ArrayList<>(candidateMap.keySet());
         Set<Long> theyFollowMe = followRepo.findFollowerIds(loggedUser, candidateIds);
 
@@ -110,6 +110,7 @@ public class UserSuggestionService {
             dto.setUsername(candidate.getUsername());
             dto.setName(candidate.getFullname());
             dto.setVerify(candidate.isVerifyTag());
+            dto.setIsPrivate(candidate.isStatusPrivate());
 
             if (candidate.getUserData() != null && candidate.getUserData().getProfilePhoto() != null && !candidate.getUserData().getProfilePhoto().equals("null")) {
                 dto.setProfilePicture(candidate.getUserData().getProfilePhoto());
