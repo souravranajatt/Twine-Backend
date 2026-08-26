@@ -12,6 +12,7 @@ import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
+import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
 @Service
@@ -20,12 +21,14 @@ public class UserSuggestionService {
     private final UsersRepo usersRepo;
     private final FollowRepo followRepo;
     private final BlockRepo blockRepo;
+    private final FollowRequestRepo followRequestRepo;
     private final AuthUtils authUtils;
 
-    public UserSuggestionService(UsersRepo usersRepo, FollowRepo followRepo, BlockRepo blockRepo, AuthUtils authUtils) {
+    public UserSuggestionService(UsersRepo usersRepo, FollowRepo followRepo, BlockRepo blockRepo, FollowRequestRepo followRequestRepo, AuthUtils authUtils) {
         this.usersRepo = usersRepo;
         this.followRepo = followRepo;
         this.blockRepo = blockRepo;
+        this.followRequestRepo = followRequestRepo;
         this.authUtils = authUtils;
     }
 
@@ -48,7 +51,10 @@ public class UserSuggestionService {
         Set<Long> myFollowingIds = myFollowing.stream()
                 .map(Users::getUserId)
                 .collect(Collectors.toSet());
-        myFollowingIds.add(loggedUser.getUserId()); // Exclude self
+        myFollowingIds.add(loggedUser.getUserId()); 
+
+        // Fetch sent follow request receiver IDs
+        Set<Long> sentRequestIds = followRequestRepo.findSentFollowRequestReceiverIds(loggedUser);
 
         // Fetch Blocked User IDs (both directions)
         Set<Long> iBlocked = blockRepo.findBlockedUserIds(loggedUser);
@@ -63,6 +69,7 @@ public class UserSuggestionService {
             for (Object[] row : mutualResults) {
                 if (row[0] instanceof Users candidate) {
                     if (!myFollowingIds.contains(candidate.getUserId())
+                            && !sentRequestIds.contains(candidate.getUserId())
                             && !iBlocked.contains(candidate.getUserId())
                             && !blockedMe.contains(candidate.getUserId())
                             && !candidate.isStatusDeleted()
@@ -85,6 +92,7 @@ public class UserSuggestionService {
 
             for (Users user : recentUsers) {
                 if (!myFollowingIds.contains(user.getUserId())
+                        && !sentRequestIds.contains(user.getUserId())
                         && !iBlocked.contains(user.getUserId())
                         && !blockedMe.contains(user.getUserId())
                         && !user.isStatusDeleted()
@@ -119,8 +127,9 @@ public class UserSuggestionService {
             }
 
             dto.setFollowsYou(theyFollowMe.contains(candidate.getUserId()));
-            dto.setFollowedByMe(false);
-            dto.setIsMe(false);
+            dto.setFollowedByMe(myFollowingIds.contains(candidate.getUserId()));
+            dto.setIsRequestSent(sentRequestIds.contains(candidate.getUserId()));
+            dto.setIsMe(candidate.getUserId().equals(loggedUser.getUserId()));
 
             fetchList.add(dto);
             if (fetchList.size() >= size) {

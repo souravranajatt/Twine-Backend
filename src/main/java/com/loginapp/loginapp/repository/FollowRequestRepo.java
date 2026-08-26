@@ -2,6 +2,7 @@ package com.loginapp.loginapp.repository;
 
 import java.util.Optional;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,6 +24,9 @@ public interface FollowRequestRepo extends JpaRepository<FollowRequestTable, Lon
         ORDER BY r.requestedOn DESC
     """)
     List<FollowRequestTable> findByReceiverId(@Param("receiver") Users receiver);
+
+    @Query("SELECT r.receiverId.userId FROM FollowRequestTable r WHERE r.senderId = :sender")
+    Set<Long> findSentFollowRequestReceiverIds(@Param("sender") Users sender);
 
     void deleteBySenderIdAndReceiverId(Users sender, Users receiver);
 

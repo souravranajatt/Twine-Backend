@@ -8,6 +8,7 @@ public class FollowListFetchDTO {
     private String profilePicture;
     private Boolean followsYou;
     private Boolean followedByMe;
+    private Boolean isRequestSent;
     private Boolean verify;
     private Boolean isMe;
     private Boolean isPrivate;
@@ -39,4 +40,8 @@ public class FollowListFetchDTO {
 
     public Boolean getIsPrivate() { return isPrivate; }
     public void setIsPrivate(Boolean isPrivate) { this.isPrivate = isPrivate; }
+
+    public Boolean getIsRequestSent() { return isRequestSent; }
+    public void setIsRequestSent(Boolean isRequestSent) { this.isRequestSent = isRequestSent; }
+
 }
