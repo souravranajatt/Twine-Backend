@@ -73,10 +73,10 @@ public class ProfileService {
     
     public SearchUserResponse userProfile(String username) {
 
-        // 1️⃣ Get logged-in user
+        // Get logged-in user
         Users loggedUser = authUtils.getLoggedUser();
 
-        // 2️⃣ Get searched user
+        // Get searched user
         Users user = usersRepo.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -112,7 +112,7 @@ public class ProfileService {
 
             if (data.getTimeUser() != null) {
                 usersRepo.findByUserId(data.getTimeUser()).ifPresent(timelineUser -> {
-                    if (!timelineUser.isStatusDeleted()) {
+                    if (!timelineUser.isStatusDeleted() && !timelineUser.isStatusSuspend()) {
                         boolean blockedbyme = blockRepo.existsByBlockerAndBlocked(loggedUser, timelineUser);
                         boolean blockedme = blockRepo.existsByBlockerAndBlocked(timelineUser, loggedUser);
                         if(blockedbyme || blockedme){
@@ -733,6 +733,10 @@ public class ProfileService {
         return fetchList;
     }
 
+
+
+
+
     // Fetch Logged User Data 
     public LoggedUserResponse fetchLoggedData(){
 
@@ -764,7 +768,17 @@ public class ProfileService {
             resData.setuLocation(userData.getUserLocation());
             resData.setuBadge(userData.getBadge());
             if(userData.getTimeUser() != null){
-                resData.setuTimeline(true);
+                Optional<Users> timelineUserOpt = usersRepo.findByUserId(userData.getTimeUser());
+                if(timelineUserOpt.isPresent()){
+                    Users timelineUser = timelineUserOpt.get();
+                    if(!timelineUser.isStatusDeleted() && !timelineUser.isStatusSuspend()){
+                        resData.setuTimeline(true);
+                    }else{
+                        resData.setuTimeline(false);
+                    }
+                }else{
+                    resData.setuTimeline(false);
+                }
             }else{
                 resData.setuTimeline(false);
             }
