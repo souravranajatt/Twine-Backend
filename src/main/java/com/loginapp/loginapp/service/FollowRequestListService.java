@@ -36,7 +36,7 @@ public class FollowRequestListService {
         return handleFollowRequest(page, 15);
     }
 
-    // Main service method to fetch paginated incoming follow requests
+    // service method to fetch paginated incoming follow requests
     public List<FollowRequestListDTO> handleFollowRequest(int page, int size) {
 
         // Get LoggedUser Data
