@@ -144,8 +144,12 @@ public class PostService {
             throw new IllegalArgumentException("Invalid video format!");
         }
 
-        if (postUploadRequest.getPostCaption().length() > 250) {
+        if (postUploadRequest.getPostCaption() != null && postUploadRequest.getPostCaption().length() > 1000) {
             throw new IllegalArgumentException("Caption size is too long!");
+        }
+
+        if (postUploadRequest.getTaggedUsers() != null && postUploadRequest.getTaggedUsers().size() > 10) {
+            throw new IllegalArgumentException("You can only tag up to 10 users!");
         }
 
         //  File bytes lo
