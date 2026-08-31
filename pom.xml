@@ -88,11 +88,6 @@
 			<artifactId>isoparser</artifactId>
 			<version>1.9.41</version>
 		</dependency>
-		<dependency>
-			<groupId>org.mp4parser</groupId>
-			<artifactId>isoparser</artifactId>
-			<version>1.9.41</version>
-		</dependency>
 		<!-- All Image Extension Supporter -->
 		<dependency>
 			<groupId>net.coobird</groupId>
@@ -116,6 +111,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+		<!-- Spring Data Redis for Fast In-Memory -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 
 	</dependencies>
