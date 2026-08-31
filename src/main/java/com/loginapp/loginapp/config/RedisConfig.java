@@ -7,12 +7,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-/**
- * Redis Configuration
- * 
- * Standalone Redis connection setup for Spring Boot.
- * Configures StringRedisTemplate and RedisTemplate beans.
- */
 @Configuration
 public class RedisConfig {
 
