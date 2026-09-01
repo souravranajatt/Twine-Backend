@@ -83,7 +83,7 @@ public class ProfileService {
         // Get logged-in user
         Users loggedUser = authUtils.getLoggedUser();
 
-        Redis Cache Key: Profile depends on both the searched user and the logged-in viewer
+        // Redis Cache Key: Profile depends on both the searched user and the logged-in viewer
         String cacheKey = "PROFILE_" + username.toLowerCase() + "_VIEWER_" + loggedUser.getUserId();
 
         try {

@@ -36,4 +36,19 @@ public class RedisService {
     public boolean hasKey(String key) {
         return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
     }
+
+    // Get remaining TTL in seconds
+    public Long getExpire(String key) {
+        return stringRedisTemplate.getExpire(key);
+    }
+
+    // Update value while preserving the remaining TTL
+    public void setValueKeepExpire(String key, String value) {
+        Long ttl = stringRedisTemplate.getExpire(key);
+        if (ttl != null && ttl > 0) {
+            stringRedisTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttl));
+        } else if (ttl != null && ttl == -1) {
+            stringRedisTemplate.opsForValue().set(key, value);
+        }
+    }
 }

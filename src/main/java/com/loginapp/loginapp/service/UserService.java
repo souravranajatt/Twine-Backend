@@ -14,15 +14,17 @@ import com.loginapp.loginapp.Utils.EmailSender;
 import com.loginapp.loginapp.Utils.JwtUtils;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.AccountSuspend;
-import com.loginapp.loginapp.entity.SignupVerification;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.AccountSuspendRepo;
-import com.loginapp.loginapp.repository.SignupVerificationRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -34,7 +36,8 @@ public class UserService {
     private final JwtUtils jwtUtils;
     private final PasswordHashing passwordHashing;
     private final AccountSuspendRepo accountSuspendRepo;
-    private final SignupVerificationRepo signupVerificationRepo;
+    private final RedisService redisService;
+    private final ObjectMapper objectMapper;
     private final EmailSender emailSender;
 
     @Value("${app.otp.expiry-minutes}")
@@ -49,15 +52,17 @@ public class UserService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
 
     private static final int MAX_OTP_ATTEMPTS = 5;
+    private static final String OTP_KEY_PREFIX = "SIGNUP_OTP_";
 
     UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing,
-                AccountSuspendRepo accountSuspendRepo, SignupVerificationRepo signupVerificationRepo,
-                EmailSender emailSender) {
+                AccountSuspendRepo accountSuspendRepo, RedisService redisService,
+                ObjectMapper objectMapper, EmailSender emailSender) {
         this.usersRepo = usersRepo;
         this.jwtUtils = jwtUtils;
         this.passwordHashing = passwordHashing;
         this.accountSuspendRepo = accountSuspendRepo;
-        this.signupVerificationRepo = signupVerificationRepo;
+        this.redisService = redisService;
+        this.objectMapper = objectMapper;
         this.emailSender = emailSender;
     }
 
@@ -145,37 +150,40 @@ public class UserService {
             throw new IllegalArgumentException("Password cannot exceed 72 characters!");
         }
 
-        // ====== 8. Generate 6-digit OTP ======
+        // 8. Generate 6-digit OTP
         SecureRandom random = new SecureRandom();
         int otpCode = 100000 + random.nextInt(900000);
         String otpPlain = String.valueOf(otpCode);
 
-        // Hash the OTP using PasswordHashing utility
+        // Hash OTP
         String otpHashed = passwordHashing.hashPassword(otpPlain);
 
-        SignupVerification record = new SignupVerification();
-        record.setEmailId(emailFinal);
-        record.setOtpHash(otpHashed);
-        record.setVerified(false);
-        record.setAttemptCount(0);
-        record.setExpireAt(LocalDateTime.now(ZoneId.of("Asia/Kolkata")).plusMinutes(otpExpiryMinutes));
-
-        // ====== 9. Build and send OTP email first ======
+        // 9. Send OTP email
         SimpleMailMessage mail = emailSender.buildOtpMessage(emailFinal, fullnameFinal, otpPlain);
         boolean sent = emailSender.sendEmail(mail);
         if (!sent) {
             throw new IllegalArgumentException("Server Timeout, Failed to deliver OTP email.");
         }
 
-        // ====== 10. Only save OTP record if email delivery succeeded ======
-        signupVerificationRepo.deleteByEmailId(emailFinal); // Delete previous verification records
-        signupVerificationRepo.save(record);
+        // 10. Save OTP data to Redis
+        try {
+            Map<String, Object> otpData = new HashMap<>();
+            otpData.put("otpHash", otpHashed);
+            otpData.put("attemptCount", 0);
+            otpData.put("verified", false);
+
+            String jsonData = objectMapper.writeValueAsString(otpData);
+            redisService.setValueWithExpiry(OTP_KEY_PREFIX + emailFinal, jsonData, otpExpiryMinutes * 60L);
+        } catch (Exception e) {
+            System.out.println("Redis OTP Save Error: " + e.getMessage());
+            throw new IllegalArgumentException("Server error. Please try again.");
+        }
     }
 
 
 
     // Step 2: Verify the OTP code
-    @Transactional(noRollbackFor = IllegalArgumentException.class)
+    @SuppressWarnings("unchecked")
     public void verifyOtp(OtpRequestDto otpRequestDto) {
 
         if (otpRequestDto.getEmail() == null || otpRequestDto.getEmail().trim().isEmpty()) {
@@ -187,34 +195,52 @@ public class UserService {
 
         String emailFinal = otpRequestDto.getEmail().trim().toLowerCase();
         String otpEntered = otpRequestDto.getOtp().trim();
+        String redisKey = OTP_KEY_PREFIX + emailFinal;
 
-        SignupVerification record = signupVerificationRepo.findByEmailId(emailFinal)
-            .orElseThrow(() -> new IllegalArgumentException("No OTP requested for this email. Please request a new OTP first."));
+        // Fetch from Redis
+        String cachedData = redisService.getValue(redisKey);
 
-        // Check expiry
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-        if (record.getExpireAt() != null && now.isAfter(record.getExpireAt())) {
-            signupVerificationRepo.delete(record);
+        if (cachedData == null) {
             throw new IllegalArgumentException("OTP has expired. Please request a new OTP.");
         }
 
-        // Check attempt count
-        if (record.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
-            signupVerificationRepo.delete(record);
-            throw new IllegalArgumentException("Too many incorrect OTP attempts. Please request a new OTP.");
-        }
+        try {
+            Map<String, Object> otpData = objectMapper.readValue(cachedData, Map.class);
 
-        // Verify OTP hash
-        if (!passwordHashing.verifyPassword(otpEntered, record.getOtpHash())) {
-            record.setAttemptCount(record.getAttemptCount() + 1);
-            signupVerificationRepo.save(record);
-            int remaining = MAX_OTP_ATTEMPTS - record.getAttemptCount();
-            throw new IllegalArgumentException("Wrong OTP. " + remaining + " attempts remaining.");
-        }
+            String otpHash = (String) otpData.get("otpHash");
+            int attemptCount = (int) otpData.get("attemptCount");
 
-        // Set as verified
-        record.setVerified(true);
-        signupVerificationRepo.save(record);
+            // Attempt check
+            if (attemptCount >= MAX_OTP_ATTEMPTS) {
+                redisService.deleteKey(redisKey);
+                throw new IllegalArgumentException("Too many incorrect OTP attempts. Please request a new OTP.");
+            }
+
+            // Verify OTP hash
+            if (!passwordHashing.verifyPassword(otpEntered, otpHash)) {
+                attemptCount++;
+                if (attemptCount >= MAX_OTP_ATTEMPTS) {
+                    redisService.deleteKey(redisKey);
+                    throw new IllegalArgumentException("Too many incorrect OTP attempts. Please request a new OTP.");
+                }
+                otpData.put("attemptCount", attemptCount);
+                String updatedJson = objectMapper.writeValueAsString(otpData);
+                redisService.setValueKeepExpire(redisKey, updatedJson);
+                int remaining = MAX_OTP_ATTEMPTS - attemptCount;
+                throw new IllegalArgumentException("Wrong OTP. " + remaining + " attempts remaining.");
+            }
+
+            // Mark verified
+            otpData.put("verified", true);
+            String verifiedJson = objectMapper.writeValueAsString(otpData);
+            redisService.setValueWithExpiry(redisKey, verifiedJson, 600);
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            System.out.println("Redis OTP Verify Error: " + e.getMessage());
+            throw new IllegalArgumentException("Server error. Please try again.");
+        }
     }
 
     // Step 3: Complete registration after OTP verification
@@ -293,15 +319,30 @@ public class UserService {
             throw new IllegalArgumentException("Password cannot exceed 72 characters!");
         }
 
-        // ====== 8. Verification Check ======
-        SignupVerification verification = signupVerificationRepo.findByEmailId(emailFinal)
-            .orElseThrow(() -> new IllegalArgumentException("Email verification is pending. Please verify OTP first."));
+        // Verification Check from Redis
+        String redisKey = OTP_KEY_PREFIX + emailFinal;
+        String cachedData = redisService.getValue(redisKey);
 
-        if (!verification.isVerified()) {
+        if (cachedData == null) {
             throw new IllegalArgumentException("Email verification is pending. Please verify OTP first.");
         }
 
-        // ====== 9. Create User and delete verification ======
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> otpData = objectMapper.readValue(cachedData, Map.class);
+            boolean isVerified = (boolean) otpData.get("verified");
+
+            if (!isVerified) {
+                throw new IllegalArgumentException("Email verification is pending. Please verify OTP first.");
+            }
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            System.out.println("Redis OTP Read Error: " + e.getMessage());
+            throw new IllegalArgumentException("Server error. Please try again.");
+        }
+
+        // Create User
         String passwordHashFinal = passwordHashing.hashPassword(signupRequest.getPassword());
 
         Users user = new Users();
@@ -312,10 +353,10 @@ public class UserService {
 
         Users savedUser = usersRepo.save(user);
 
-        // Delete verification record after creation
-        signupVerificationRepo.delete(verification);
+        // Delete OTP from Redis
+        redisService.deleteKey(redisKey);
 
-        // ====== 10. Generate JWT ======
+        // Generate JWT Token
         String resToken = jwtUtils.generateToken(savedUser.getUserId(), savedUser.getUsername());
 
         SignupResponse resData = new SignupResponse();
