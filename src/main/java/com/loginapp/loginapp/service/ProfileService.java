@@ -30,6 +30,8 @@ import com.loginapp.loginapp.repository.UsersRepo;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Service
 @Transactional
 public class ProfileService {
@@ -54,7 +56,10 @@ public class ProfileService {
 
     private final AuthUtils authUtils;
 
-    ProfileService(SavedPostRepo savedPostRepo, UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, PostLikeRepo postLikeRepo, AuthUtils authUtils) {
+    private final RedisService redisService;
+    private final ObjectMapper objectMapper;
+
+    ProfileService(SavedPostRepo savedPostRepo, UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, PostLikeRepo postLikeRepo, AuthUtils authUtils, RedisService redisService, ObjectMapper objectMapper) {
         this.savedPostRepo = savedPostRepo;
         this.usersRepo = usersRepo;
         this.followRepo = followRepo;
@@ -65,6 +70,8 @@ public class ProfileService {
         this.secretCrushRequestRepo = secretCrushRequestRepo;
         this.postLikeRepo = postLikeRepo;
         this.authUtils = authUtils;
+        this.redisService = redisService;
+        this.objectMapper = objectMapper;
     }
 
 
@@ -75,6 +82,19 @@ public class ProfileService {
 
         // Get logged-in user
         Users loggedUser = authUtils.getLoggedUser();
+
+        Redis Cache Key: Profile depends on both the searched user and the logged-in viewer
+        String cacheKey = "PROFILE_" + username.toLowerCase() + "_VIEWER_" + loggedUser.getUserId();
+
+        try {
+            String cachedData = redisService.getValue(cacheKey);
+            if (cachedData != null) {
+                return objectMapper.readValue(cachedData, SearchUserResponse.class);
+            }
+        } catch (Exception e) {
+            System.out.println("Redis Cache Read Error: " + e.getMessage());
+            // Fallback to database on cache read error
+        }
 
         // Get searched user
         Users user = usersRepo.findByUsername(username)
@@ -90,7 +110,7 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
-        // 3️⃣ Prepare response
+        // Prepare response
         SearchUserResponse res = new SearchUserResponse();
 
         // ================= BASIC USER INFO =================
@@ -164,8 +184,16 @@ public class ProfileService {
 
         // ================= COUNTS =================
         res.setFollowersCount(followRepo.countByFollowing_UserId(user.getUserId()));
-        res.setFollowingCount(followRepo.countByFollower_UserId(user.getUserId()));
         res.setPostCount(postRepo.countByUserpost_UserId(user.getUserId()));
+
+        try {
+            // Save to Redis cache for 5 minutes (300 seconds)
+            String jsonRes = objectMapper.writeValueAsString(res);
+            redisService.setValueWithExpiry(cacheKey, jsonRes, 300);
+        } catch (Exception e) {
+            System.out.println("Redis Cache Write Error: " + e.getMessage());
+            // Fallback: ignore cache write error
+        }
 
         return res;
     }

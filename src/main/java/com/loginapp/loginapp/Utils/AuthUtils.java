@@ -26,6 +26,10 @@ public class AuthUtils {
             throw new IllegalArgumentException("Something went wrong!");
         }
 
+        if(user.isStatusSuspend()){
+            throw new IllegalArgumentException("Something went wrong!");
+        }
+
         return user;
     }
 }
