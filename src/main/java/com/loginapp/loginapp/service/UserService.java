@@ -78,7 +78,7 @@ public class UserService {
     @Transactional
     public void sendOtp(SignupRequest signupRequest) {
 
-        // ====== 1. Null and Empty Checks ======
+        //  1. Null and Empty Checks 
         if (signupRequest.getFullname() == null || signupRequest.getFullname().trim().isEmpty()) {
             throw new IllegalArgumentException("Fullname is required!");
         }
@@ -92,17 +92,17 @@ public class UserService {
             throw new IllegalArgumentException("Password is required!");
         }
 
-        // ====== 2. Trim and Normalize Data ======
+        //  2. Trim and Normalize Data 
         String fullnameFinal = signupRequest.getFullname().trim();
         String usernameFinal = signupRequest.getUsername().trim().toLowerCase();
         String emailFinal = signupRequest.getEmail().trim().toLowerCase();
 
-        // ====== 3. Full Name Validation ======
+        // 3. Full Name Validation
         if (fullnameFinal.length() > 30) {
             throw new IllegalArgumentException("Fullname can't exceed 30 characters!");
         }
 
-        // ====== 4. Username Validation ======
+        // 4. Username Validation
         if (usernameFinal.length() > 25) {
             throw new IllegalArgumentException("Username can't exceed 25 characters!");
         }
@@ -119,7 +119,7 @@ public class UserService {
             throw new IllegalArgumentException("Username cannot have consecutive periods!");
         }
 
-        // ====== 5. Email Validation ======
+        // 5. Email Validation
         if (!EMAIL_PATTERN.matcher(emailFinal).matches()) {
             throw new IllegalArgumentException("Enter a valid email address!");
         }
@@ -134,7 +134,7 @@ public class UserService {
             throw new IllegalArgumentException("Email cannot have consecutive periods!");
         }
 
-        // ====== 6. Uniqueness Check ======
+        // 6. Uniqueness Check
         if (usersRepo.findByUsername(usernameFinal).isPresent()) {
             throw new IllegalArgumentException("Username already taken!");
         }
@@ -142,7 +142,7 @@ public class UserService {
             throw new IllegalArgumentException("Email already registered!");
         }
 
-        // ====== 7. Password Validation =====
+        // 7. Password Validation
         if (signupRequest.getPassword().length() < 8) {
             throw new IllegalArgumentException("Password must be at least 8 characters long!");
         }
