@@ -20,6 +20,7 @@ import com.loginapp.loginapp.repository.UsersRepo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -39,6 +40,7 @@ public class UserService {
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
     private final EmailSender emailSender;
+    private final AuthRedisService authRedisService;
 
     @Value("${app.otp.expiry-minutes}")
     private int otpExpiryMinutes;
@@ -56,7 +58,8 @@ public class UserService {
 
     UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing,
                 AccountSuspendRepo accountSuspendRepo, RedisService redisService,
-                ObjectMapper objectMapper, EmailSender emailSender) {
+                ObjectMapper objectMapper, EmailSender emailSender,
+                AuthRedisService authRedisService) {
         this.usersRepo = usersRepo;
         this.jwtUtils = jwtUtils;
         this.passwordHashing = passwordHashing;
@@ -64,7 +67,10 @@ public class UserService {
         this.redisService = redisService;
         this.objectMapper = objectMapper;
         this.emailSender = emailSender;
+        this.authRedisService = authRedisService;
     }
+
+
 
 
 
@@ -245,7 +251,7 @@ public class UserService {
 
     // Step 3: Complete registration after OTP verification
     @Transactional
-    public SignupResponse registerUser(SignupRequest signupRequest) {
+    public SignupResponse registerUser(SignupRequest signupRequest, HttpServletRequest request) {
 
         // ====== 1. Null and Empty Checks ======
         if (signupRequest.getFullname() == null || signupRequest.getFullname().trim().isEmpty()) {
@@ -356,8 +362,11 @@ public class UserService {
         // Delete OTP from Redis
         redisService.deleteKey(redisKey);
 
-        // Generate JWT Token
-        String resToken = jwtUtils.generateToken(savedUser.getUserId(), savedUser.getUsername());
+        // Create session in Redis
+        String sessionId = authRedisService.createSession(savedUser.getUserId(), savedUser.getUsername(), request);
+
+        // Generate JWT Token with sessionId
+        String resToken = jwtUtils.generateToken(savedUser.getUserId(), savedUser.getUsername(), sessionId);
 
         SignupResponse resData = new SignupResponse();
         resData.setJwtToken(resToken);
@@ -367,7 +376,7 @@ public class UserService {
     }
 
     // Login validation
-    public LoginResponse loginUser(LoginRequest loginRequest) {
+    public LoginResponse loginUser(LoginRequest loginRequest, HttpServletRequest request) {
 
         // Null and Empty Checks
         if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
@@ -430,8 +439,11 @@ public class UserService {
             usersRepo.save(user);
         }
 
-        // Generate JWT Token
-        String resToken = jwtUtils.generateToken(user.getUserId(), user.getUsername());
+        // Create session in Redis
+        String sessionId = authRedisService.createSession(user.getUserId(), user.getUsername(), request);
+
+        // Generate JWT Token with sessionId
+        String resToken = jwtUtils.generateToken(user.getUserId(), user.getUsername(), sessionId);
 
         LoginResponse resData = new LoginResponse();
         resData.setJwtToken(resToken);

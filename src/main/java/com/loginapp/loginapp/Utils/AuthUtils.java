@@ -15,9 +15,21 @@ public class AuthUtils {
     }
 
     public Users getLoggedUser() {
-        String userIdStr = SecurityContextHolder.getContext()
-                                .getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null 
+                || !authentication.isAuthenticated() 
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new IllegalArgumentException("Token Expired!");
+        }
+
+        String userIdStr = authentication.getName();
+        Long userUid;
+        try {
+            userUid = Long.parseLong(userIdStr);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Token Expired!");
+        }
 
         Users user = usersRepo.findByUserId(userUid)
                 .orElseThrow(() -> new IllegalArgumentException("Something went wrong!"));

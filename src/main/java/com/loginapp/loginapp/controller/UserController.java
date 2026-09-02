@@ -3,7 +3,11 @@ package com.loginapp.loginapp.controller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.loginapp.loginapp.DTO.LoginRequest;
 import com.loginapp.loginapp.DTO.LoginResponse;
@@ -13,6 +17,7 @@ import com.loginapp.loginapp.DTO.SignupResponse;
 import com.loginapp.loginapp.service.UserService;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
@@ -30,14 +35,14 @@ public class UserController {
 
     // Complete Registration
     @PostMapping("/signup")
-    public ResponseEntity<SignupResponse> signup(@RequestBody SignupRequest signupRequest, HttpServletResponse response) {
+    public ResponseEntity<SignupResponse> signup(@RequestBody SignupRequest signupRequest,
+                                                 HttpServletRequest request,
+                                                 HttpServletResponse response) {
         try {
-            SignupResponse responseFinal = userService.registerUser(signupRequest);
-            
-            // Get the actual JWT token before nulling
+            SignupResponse responseFinal = userService.registerUser(signupRequest, request);
+
             String token = responseFinal.getJwtToken();
 
-            // Save token to HTTPOnly cookie
             Cookie cookie = new Cookie("token", token);
             cookie.setHttpOnly(true);
             cookie.setSecure(secureCookie);
@@ -46,7 +51,6 @@ public class UserController {
             cookie.setAttribute("SameSite", "Lax");
             response.addCookie(cookie);
 
-            // Hide JWT from frontend
             responseFinal.setJwtToken(null);
 
             return ResponseEntity.ok(responseFinal);
@@ -93,9 +97,11 @@ public class UserController {
 
     // Login endpoint
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest,
+                                               HttpServletRequest request,
+                                               HttpServletResponse response) {
         try {
-            LoginResponse responseFinal = userService.loginUser(loginRequest);
+            LoginResponse responseFinal = userService.loginUser(loginRequest, request);
 
             String token = responseFinal.getJwtToken();
 

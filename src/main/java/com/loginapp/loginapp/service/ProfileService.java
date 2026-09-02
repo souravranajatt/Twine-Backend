@@ -4,7 +4,6 @@ import com.loginapp.loginapp.repository.SavedPostRepo;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -768,16 +767,7 @@ public class ProfileService {
     // Fetch Logged User Data 
     public LoggedUserResponse fetchLoggedData(){
 
-        // 1️⃣ Get logged-in username from JWT
-        String userIdStr = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long userUid = Long.parseLong(userIdStr);
-        Optional<Users> userOpt = usersRepo.findByUserId(userUid);
-
-        if(userOpt.isEmpty()){
-            throw new IllegalArgumentException("Token Expired!"); 
-        }
-
-        Users finalUser = userOpt.get();
+        Users finalUser = authUtils.getLoggedUser();
 
         // Set Data to DTO elements 
         LoggedUserResponse resData = new LoggedUserResponse();

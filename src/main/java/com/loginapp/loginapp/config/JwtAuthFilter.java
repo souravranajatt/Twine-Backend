@@ -1,6 +1,7 @@
 package com.loginapp.loginapp.config;
 
 import com.loginapp.loginapp.Utils.JwtUtils;
+import com.loginapp.loginapp.service.AuthRedisService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,9 +19,11 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+    private final AuthRedisService authRedisService;
 
-    JwtAuthFilter(JwtUtils jwtUtils) {
+    JwtAuthFilter(JwtUtils jwtUtils, AuthRedisService authRedisService) {
         this.jwtUtils = jwtUtils;
+        this.authRedisService = authRedisService;
     }
 
     @Override
@@ -46,6 +49,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 Claims claims = jwtUtils.extractAllClaims(token);
                 String userId = claims.getSubject();
+                String sessionId = claims.get("sessionId", String.class);
+
+                // Check if session is still active in Redis
+                if (!authRedisService.isSessionActive(sessionId)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(userId, null, null);
@@ -55,9 +65,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-            System.out.println("❌ JWT from cookie INVALID: " + e.getMessage());
+            System.out.println("JWT from cookie INVALID: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
 }
+

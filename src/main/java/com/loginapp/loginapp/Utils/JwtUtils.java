@@ -22,17 +22,19 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(jwtSecretKey.getBytes());
     }
 
-    // Generate token with userId + username
-    public String generateToken(Long userId, String username) {
+    // Generate token with userId + username + sessionId
+    public String generateToken(Long userId, String username, String sessionId) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("username", username)
+                .claim("sessionId", sessionId)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    //extract all claim in token 
     public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
