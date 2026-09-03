@@ -52,7 +52,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String sessionId = claims.get("sessionId", String.class);
 
                 // Check if session is still active in Redis
-                if (!authRedisService.isSessionActive(sessionId)) {
+                if (!authRedisService.isValidSession(userId, sessionId)) {
                     filterChain.doFilter(request, response);
                     return;
                 }

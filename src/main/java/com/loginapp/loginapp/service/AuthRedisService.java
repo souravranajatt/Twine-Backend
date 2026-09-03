@@ -80,9 +80,14 @@ public class AuthRedisService {
         return sessionId;
     }
 
-    public boolean isSessionActive(String sessionId) {
-        if (sessionId == null) return false;
-        return userSessionRepo.existsById(sessionId);
+    public boolean isValidSession(String userId, String sessionId) {
+        if (sessionId == null || userId == null) {
+            return false;
+        }
+        
+        UserSession session = userSessionRepo.findBySessionId(sessionId);
+        return session != null && userId.equals(session.getUserId());
+
     }
 
     public void deleteSession(String sessionId) {
