@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.loginapp.loginapp.DTO.ArchivePostsDTO;
@@ -16,6 +17,9 @@ import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
 import com.loginapp.loginapp.DTO.TaggingResult;
+import com.loginapp.loginapp.DTO.UserSessionResponseDTO;
+import com.loginapp.loginapp.entity.UserSession;
+import com.loginapp.loginapp.repository.UserSessionRepo;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.DefaultSetting;
@@ -44,6 +48,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 @Transactional
@@ -77,6 +83,8 @@ public class SettingService {
 
     private final DefaultSetting defaultSetting;
 
+    private final UserSessionRepo userSessionRepo;
+
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
@@ -89,7 +97,7 @@ public class SettingService {
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
-    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting) {
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting, UserSessionRepo userSessionRepo) {
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
         this.cloudinaryService = cloudinaryService;
@@ -103,6 +111,7 @@ public class SettingService {
         this.postRepo = postRepo;
         this.settingPreferencesRepo = settingPreferencesRepo;
         this.defaultSetting = defaultSetting;
+        this.userSessionRepo = userSessionRepo;
     }
 
 
@@ -635,6 +644,45 @@ public class SettingService {
         usersRepo.save(user);
         
         return "Password changed successfully!";
+    }
+
+    // 2. Login Active Session Fetching Service
+    public List<UserSessionResponseDTO> fetchLoginActivities(){
+        Users user = authUtils.getLoggedUser();
+        
+        String currentSessionId = null;
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof String) {
+            currentSessionId = (String) auth.getDetails();
+        }
+        
+        //Fetch all active sessions 
+        List<UserSession> sessions = userSessionRepo.findByUserId(user.getUserId());
+
+        // Return List
+        List<UserSessionResponseDTO> sessionList = new ArrayList<>();
+
+        //Map to UserSessionResponseDTO
+        for (UserSession session : sessions) {
+            UserSessionResponseDTO sessionResponse = new UserSessionResponseDTO();
+            sessionResponse.setSessionId(session.getSessionId());
+            sessionResponse.setDeviceName(session.getDeviceName());
+            sessionResponse.setBrowser(session.getBrowser());
+            sessionResponse.setIpAddress(session.getIpAddress());
+            sessionResponse.setLocation(session.getLocation());
+            sessionResponse.setLoginTime(session.getLoginTime());
+            sessionResponse.setLastActive(session.getLastActive());
+
+            if (currentSessionId != null && currentSessionId.equals(session.getSessionId())) {
+                sessionResponse.setCurrentDevice(true);
+            } else {
+                sessionResponse.setCurrentDevice(false);
+            }
+
+            sessionList.add(sessionResponse);
+        }
+        
+        return sessionList;
     }
 
 

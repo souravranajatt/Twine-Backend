@@ -1,6 +1,8 @@
 package com.loginapp.loginapp.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -73,21 +75,29 @@ public class AuthRedisService {
         session.setBrowser(parseBrowser(userAgent));
         session.setIpAddress(ipAddress);
         session.setLocation("Unknown");
-        session.setLoginTime(LocalDateTime.now());
-        session.setLastActive(LocalDateTime.now());
+        session.setLoginTime(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+        session.setLastActive(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 
         userSessionRepo.save(session);
         return sessionId;
     }
 
-    public boolean isValidSession(String userId, String sessionId) {
-        if (sessionId == null || userId == null) {
+    public boolean isValidSession(String userIdStr, String sessionId) {
+        if (sessionId == null || userIdStr == null) {
             return false;
         }
         
-        UserSession session = userSessionRepo.findBySessionId(sessionId);
-        return session != null && userId.equals(session.getUserId());
+        Optional<UserSession> sessionOpt = userSessionRepo.findById(sessionId);
+        if (sessionOpt.isEmpty()) {
+            return false;
+        }
 
+        try {
+            Long userId = Long.parseLong(userIdStr);
+            return userId.equals(sessionOpt.get().getUserId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     public void deleteSession(String sessionId) {

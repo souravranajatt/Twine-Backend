@@ -16,15 +16,12 @@ import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
+import com.loginapp.loginapp.DTO.UserSessionResponseDTO;
 import com.loginapp.loginapp.DTO.VisibilityUpdateDTO;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-
-
-
-
 
 @RestController
 @RequestMapping("/api/setting")
@@ -245,6 +242,18 @@ public class SettingController {
         try{
             String result = settingService.changePasswordService(changePasswordRequestDTO);
             return ResponseEntity.ok(result);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
+    @GetMapping({"/security/login-activity", "/security/active-sessions"})
+    public ResponseEntity<?> getLoginActivities(){
+        try{
+            List<UserSessionResponseDTO> loginActivities = settingService.fetchLoginActivities();
+            return ResponseEntity.ok(loginActivities);
         }catch(IllegalArgumentException err){
             return ResponseEntity.badRequest().body(err.getMessage());
         }catch(Exception e){
