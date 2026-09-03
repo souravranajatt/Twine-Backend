@@ -616,6 +616,19 @@ public class SettingService {
             throw new IllegalArgumentException("New password cannot exceed 72 characters!");
         }
 
+        // Validate Confirm Password
+        if (changePasswordRequestDTO.getConfirmPassword() == null || changePasswordRequestDTO.getConfirmPassword().isEmpty()) {
+            throw new IllegalArgumentException("Confirm password is required!");
+        }
+        if (!changePasswordRequestDTO.getNewPassword().equals(changePasswordRequestDTO.getConfirmPassword())) {
+            throw new IllegalArgumentException("New password and confirm password do not match!");
+        }
+
+        // New Password & Old Password Check 
+        if (changePasswordRequestDTO.getNewPassword().equals(changePasswordRequestDTO.getOldPassword())) {
+            throw new IllegalArgumentException("New password and old password cannot be the same!");
+        }
+
         // Update Password
         String hashedNewPassword = passwordHashing.hashPassword(changePasswordRequestDTO.getNewPassword());
         user.setPasswordHash(hashedNewPassword);

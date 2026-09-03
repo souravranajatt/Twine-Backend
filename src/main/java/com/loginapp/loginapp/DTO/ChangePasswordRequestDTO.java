@@ -3,6 +3,7 @@ package com.loginapp.loginapp.DTO;
 public class ChangePasswordRequestDTO {
     private String oldPassword;
     private String newPassword;
+    private String confirmPassword;
 
     // Getters and Setters
 
@@ -17,6 +18,12 @@ public class ChangePasswordRequestDTO {
     }
     public void setNewPassword(String newPassword) {
         this.newPassword = newPassword; 
+    }
+    public String getConfirmPassword() {
+        return confirmPassword;
+    }
+    public void setConfirmPassword(String confirmPassword) {
+        this.confirmPassword = confirmPassword; 
     }
 
 }
