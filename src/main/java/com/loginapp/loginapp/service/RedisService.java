@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -9,8 +8,11 @@ import java.time.Duration;
 @Service
 public class RedisService {
 
-    @Autowired
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    RedisService(StringRedisTemplate stringRedisTemplate) {
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
 
     // Save a key-value pair with an expiration time
     public void setValueWithExpiry(String key, String value, long timeoutInSeconds) {

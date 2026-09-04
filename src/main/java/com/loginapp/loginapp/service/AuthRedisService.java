@@ -62,6 +62,7 @@ public class AuthRedisService {
         return ip != null ? ip : "Unknown";
     }
 
+    // for creating session after login
     public String createSession(Long userId, String username, HttpServletRequest request) {
         String sessionId = String.valueOf(new SnowflakeIdGenerator().generate(null, null));
         String userAgent = request != null ? request.getHeader("User-Agent") : null;
@@ -82,6 +83,8 @@ public class AuthRedisService {
         return sessionId;
     }
 
+
+    // for checking session is valid or not
     public boolean isValidSession(String userIdStr, String sessionId) {
         if (sessionId == null || userIdStr == null) {
             return false;
@@ -100,9 +103,20 @@ public class AuthRedisService {
         }
     }
 
+    // for deleting session
     public void deleteSession(String sessionId) {
         if (sessionId != null) {
             userSessionRepo.deleteById(sessionId);
         }
+    }
+
+
+    // Update Redis TTL Session 
+    public void updateLastActive(String sessionId) {
+        if (sessionId == null) return;
+        userSessionRepo.findById(sessionId).ifPresent(session -> {
+            session.setLastActive(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+            userSessionRepo.save(session);
+        });
     }
 }

@@ -10,12 +10,15 @@ import com.loginapp.loginapp.DTO.LoginResponse;
 import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
+import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.EmailSender;
 import com.loginapp.loginapp.Utils.JwtUtils;
 import com.loginapp.loginapp.Utils.PasswordHashing;
 import com.loginapp.loginapp.entity.AccountSuspend;
+import com.loginapp.loginapp.entity.UserSession;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.AccountSuspendRepo;
+import com.loginapp.loginapp.repository.UserSessionRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,6 +44,8 @@ public class UserService {
     private final ObjectMapper objectMapper;
     private final EmailSender emailSender;
     private final AuthRedisService authRedisService;
+    private final AuthUtils authUtils;
+    private final UserSessionRepo userSessionRepo;
 
     @Value("${app.otp.expiry-minutes}")
     private int otpExpiryMinutes;
@@ -59,7 +64,7 @@ public class UserService {
     UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing,
                 AccountSuspendRepo accountSuspendRepo, RedisService redisService,
                 ObjectMapper objectMapper, EmailSender emailSender,
-                AuthRedisService authRedisService) {
+                AuthRedisService authRedisService, AuthUtils authUtils, UserSessionRepo userSessionRepo) {
         this.usersRepo = usersRepo;
         this.jwtUtils = jwtUtils;
         this.passwordHashing = passwordHashing;
@@ -68,6 +73,8 @@ public class UserService {
         this.objectMapper = objectMapper;
         this.emailSender = emailSender;
         this.authRedisService = authRedisService;
+        this.authUtils = authUtils;
+        this.userSessionRepo = userSessionRepo;
     }
 
 
@@ -450,5 +457,25 @@ public class UserService {
         resData.setMessage("Login Successful!");
 
         return resData;
+    }
+
+
+    // Logout Specific Device 
+    public String logoutSessionDevice(String sessionId) {
+        Users loggedUser = authUtils.getLoggedUser();
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Invalid Action!");
+        }
+
+        // Validate session belongs to current user
+        Optional<UserSession> sessionOpt = userSessionRepo.findById(sessionId);
+
+        if (sessionOpt.isEmpty() || !sessionOpt.get().getUserId().equals(loggedUser.getUserId())) {
+            throw new IllegalArgumentException("Session not found or unauthorized");
+        }
+
+        authRedisService.deleteSession(sessionId);
+        
+        return "Logged out from specific device successfully";
     }
 }

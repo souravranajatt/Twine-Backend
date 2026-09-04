@@ -5,7 +5,6 @@ import java.util.regex.Pattern;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.loginapp.loginapp.DTO.ArchivePostsDTO;
@@ -48,8 +47,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 @Transactional
@@ -650,11 +647,7 @@ public class SettingService {
     public List<UserSessionResponseDTO> fetchLoginActivities(){
         Users user = authUtils.getLoggedUser();
         
-        String currentSessionId = null;
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getDetails() instanceof String) {
-            currentSessionId = (String) auth.getDetails();
-        }
+        String currentSessionId = authUtils.getCurrentSessionId();
         
         //Fetch all active sessions 
         List<UserSession> sessions = userSessionRepo.findByUserId(user.getUserId());

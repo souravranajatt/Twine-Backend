@@ -3,7 +3,9 @@ package com.loginapp.loginapp.controller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +16,8 @@ import com.loginapp.loginapp.DTO.LoginResponse;
 import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
+import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.service.AuthRedisService;
 import com.loginapp.loginapp.service.UserService;
 
 import jakarta.servlet.http.Cookie;
@@ -24,13 +28,18 @@ import jakarta.servlet.http.HttpServletResponse;
 @RequestMapping("/api/auth")
 public class UserController {
 
+    private final AuthRedisService authRedisService;
+    private final AuthUtils authUtils;
+
     private final UserService userService;
 
     @Value("${app.secure-cookie}")
     private boolean secureCookie;
 
-    UserController(UserService userService) {
+    UserController(UserService userService, AuthRedisService authRedisService, AuthUtils authUtils) {
         this.userService = userService;
+        this.authRedisService = authRedisService;
+        this.authUtils = authUtils;
     }
 
     // Complete Registration
@@ -140,15 +149,37 @@ public class UserController {
     // Logout endpoint
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
+        
+        // Delete session before removing cookie from header 
+        String sessionId = authUtils.getCurrentSessionId();
+        if (sessionId != null) {
+            authRedisService.deleteSession(sessionId);
+        }
+
         SecurityContextHolder.clearContext();
+
         Cookie cookie = new Cookie("token", null);
         cookie.setHttpOnly(true);
-        cookie.setSecure(secureCookie); 
+        cookie.setSecure(secureCookie);
         cookie.setPath("/");
         cookie.setMaxAge(0);
         cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);
 
         return ResponseEntity.ok("Logged out successfully");
+    }
+
+    // Logout from specific device 
+    @DeleteMapping("/logout-device/{sessionId}")
+    public ResponseEntity<?> logoutSpecificDevice(@PathVariable String sessionId){
+        try{
+            userService.logoutSessionDevice(sessionId);
+            return ResponseEntity.ok("Logged out from specific device successfully");
+            
+        }catch (IllegalArgumentException e){
+            return ResponseEntity.badRequest().body("Invalid session ID");
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("An error occurred while logging out from the specific device");
+        }
     }
 }

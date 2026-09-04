@@ -42,7 +42,6 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/send-otp",
                                 "/api/auth/verify-otp",
-                                "/api/auth/logout",
                                 "/api/auth/check-auth"
                         ).permitAll()
                         .anyRequest().authenticated()

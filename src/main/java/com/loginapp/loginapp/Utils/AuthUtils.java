@@ -14,6 +14,7 @@ public class AuthUtils {
         this.usersRepo = usersRepo;
     }
 
+    // Get Current Logged User
     public Users getLoggedUser() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -43,5 +44,14 @@ public class AuthUtils {
         }
 
         return user;
+    }
+
+    // Get Current User Session Id
+    public String getCurrentSessionId() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof String sessionId) {
+            return sessionId;
+        }
+        return null;
     }
 }

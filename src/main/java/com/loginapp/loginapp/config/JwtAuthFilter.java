@@ -11,12 +11,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
+
+    @Value("${app.secure-cookie}")
+    private boolean secureCookie;
 
     private final JwtUtils jwtUtils;
     private final AuthRedisService authRedisService;
@@ -50,11 +54,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 Claims claims = jwtUtils.extractAllClaims(token);
                 String userId = claims.getSubject();
                 String sessionId = claims.get("sessionId", String.class);
+                String username = claims.get("username", String.class);
 
                 // Check if session is still active in Redis
                 if (!authRedisService.isValidSession(userId, sessionId)) {
                     filterChain.doFilter(request, response);
                     return;
+                }
+
+                // Update Redis TTL If user active for next 7 days
+                authRedisService.updateLastActive(sessionId);
+
+                // If remaining token time less than 3 days, auto-refresh JWT cookie
+                long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
+                if (remainingMs < (3L * 24 * 60 * 60 * 1000L)) {
+                    try {
+                        Long userUid = Long.parseLong(userId);
+                        String newToken = jwtUtils.generateToken(userUid, username, sessionId);
+
+                        Cookie newCookie = new Cookie("token", newToken);
+                        newCookie.setHttpOnly(true);
+                        newCookie.setSecure(secureCookie);
+                        newCookie.setPath("/");
+                        newCookie.setMaxAge(7 * 24 * 60 * 60);
+                        newCookie.setAttribute("SameSite", "Lax");
+                        response.addCookie(newCookie);
+                    } catch (Exception ex) {
+                        System.out.println("Failed to refresh sliding session: " + ex.getMessage());
+                    }
                 }
 
                 UsernamePasswordAuthenticationToken auth =
