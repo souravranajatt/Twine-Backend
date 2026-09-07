@@ -85,15 +85,15 @@ public class ProfileService {
         // Redis Cache Key: Profile depends on both the searched user and the logged-in viewer
         String cacheKey = "PROFILE_" + username.toLowerCase() + "_VIEWER_" + loggedUser.getUserId();
 
-        try {
-            String cachedData = redisService.getValue(cacheKey);
-            if (cachedData != null) {
-                return objectMapper.readValue(cachedData, SearchUserResponse.class);
-            }
-        } catch (Exception e) {
-            System.out.println("Redis Cache Read Error: " + e.getMessage());
-            // Fallback to database on cache read error
-        }
+        // try {
+        //     String cachedData = redisService.getValue(cacheKey);
+        //     if (cachedData != null) {
+        //         return objectMapper.readValue(cachedData, SearchUserResponse.class);
+        //     }
+        // } catch (Exception e) {
+        //     System.out.println("Redis Cache Read Error: " + e.getMessage());
+        //     // Fallback to database on cache read error
+        // }
 
         // Get searched user
         Users user = usersRepo.findByUsername(username)
@@ -535,17 +535,16 @@ public class ProfileService {
             throw new IllegalArgumentException("User not found");
         }
 
-        // check if user is private and not following or if logged user blocked the search user then return nothing
-        boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, userRes);
-        if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
-            return Collections.emptyList();
-        }
-
-        //  self check 
+        // Self check
         if(userRes.getUserId().equals(loggedUser.getUserId())){
             isFollowingPvt = true;
         }
 
+        // Check if user is private and not following or if logged user blocked the search user then return nothing
+        boolean isBlockedByLoggedUser = blockRepo.existsByBlockerAndBlocked(loggedUser, userRes);
+        if(isBlockedByLoggedUser || (userRes.isStatusPrivate() && !isFollowingPvt)){
+            return Collections.emptyList();
+        }
 
         // check if postowner blocked me or blocked by me them return nothing
         List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
@@ -593,8 +592,8 @@ public class ProfileService {
                 continue;
             }
 
-            // Hide private users' posts unless the logged-in user follows them
-            if (post.getUserpost().isStatusPrivate() && !followedUserIds.contains(postOwnerUserId)) {
+            // Hide private users' posts unless the logged-in user is the owner or follows them
+            if (post.getUserpost().isStatusPrivate() && !postOwnerUserId.equals(loggedUser.getUserId()) && !followedUserIds.contains(postOwnerUserId)) {
                 continue;
             }
 
