@@ -161,6 +161,11 @@ public class ProfileActionService {
         if (userOne.getUserId().equals(userTwo.getUserId()))
             throw new IllegalArgumentException("Invalid action!");
 
+        boolean isBlocked = blockRepo.existsByBlockerAndBlocked(userOne, userTwo)
+                        || blockRepo.existsByBlockerAndBlocked(userTwo, userOne);
+        if (isBlocked)
+            throw new IllegalArgumentException("Action not allowed! User is blocked.");
+
         // Check request exists
         FollowRequestTable req = followRequestRepo.findBySenderIdAndReceiverId(userTwo, userOne)
                                 .orElseThrow(() -> new IllegalArgumentException("No request found!"));
