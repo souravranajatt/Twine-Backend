@@ -163,22 +163,21 @@ public class UserService {
             throw new IllegalArgumentException("Password cannot exceed 72 characters!");
         }
 
-        // 8. Generate 6-digit OTP
-        SecureRandom random = new SecureRandom();
-        int otpCode = 100000 + random.nextInt(900000);
-        String otpPlain = String.valueOf(otpCode);
+        // 8. Skip resending OTP if previous OTP is less than 5 minutes old
+        String redisKey = OTP_KEY_PREFIX + emailFinal;
+        Long remainingTtl = redisService.getExpire(redisKey);
 
-        // Hash OTP
-        String otpHashed = passwordHashing.hashPassword(otpPlain);
-
-        // 9. Send OTP email
-        SimpleMailMessage mail = emailSender.buildOtpMessage(emailFinal, fullnameFinal, otpPlain);
-        boolean sent = emailSender.sendEmail(mail);
-        if (!sent) {
-            throw new IllegalArgumentException("Server Timeout, Failed to deliver OTP email.");
+        if (remainingTtl != null && remainingTtl > (otpExpiryMinutes * 60L - 300L)) {
+            return;
         }
 
-        // 10. Save OTP data to Redis
+        // 9. Generate and hash 6-digit OTP
+        SecureRandom random = new SecureRandom();
+        int otpCode = 100000 + random.nextInt(900000);
+        String otpPlain = String.valueOf(otpCode); 
+        String otpHashed = passwordHashing.hashPassword(otpPlain); // Hash OTP
+
+        // 10. Save OTP to Redis first
         try {
             Map<String, Object> otpData = new HashMap<>();
             otpData.put("otpHash", otpHashed);
@@ -186,10 +185,18 @@ public class UserService {
             otpData.put("verified", false);
 
             String jsonData = objectMapper.writeValueAsString(otpData);
-            redisService.setValueWithExpiry(OTP_KEY_PREFIX + emailFinal, jsonData, otpExpiryMinutes * 60L);
+            redisService.setValueWithExpiry(redisKey, jsonData, otpExpiryMinutes * 60L);
         } catch (Exception e) {
             System.out.println("Redis OTP Save Error: " + e.getMessage());
             throw new IllegalArgumentException("Server error. Please try again.");
+        }
+
+        // 11. Deliver OTP via email
+        SimpleMailMessage mail = emailSender.buildOtpMessage(emailFinal, fullnameFinal, otpPlain);
+        boolean sent = emailSender.sendEmail(mail);
+        if (!sent) {
+            redisService.deleteKey(redisKey);
+            throw new IllegalArgumentException("Server Timeout, Failed to deliver OTP email.");
         }
     }
 
