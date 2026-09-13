@@ -181,7 +181,7 @@ public class PostService {
 
         //  Cloudinary 
         String filename = "TWINE_PID" + System.currentTimeMillis() + "_" + 
-                          file.getOriginalFilename();
+                          user.getUserId();
         String fileUrl = cloudinaryService.uploadFile(fileBytes, filename, contentType);
         post.setFileName(fileUrl); 
 
