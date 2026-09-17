@@ -185,6 +185,8 @@ public class ProfileService {
         res.setFollowersCount(followRepo.countByFollowing_UserId(user.getUserId()));
         res.setPostCount(postRepo.countByUserpost_UserId(user.getUserId()));
 
+
+        // Redis Service Call 
         try {
             // Save to Redis cache for 5 minutes (300 seconds)
             String jsonRes = objectMapper.writeValueAsString(res);
