@@ -29,7 +29,7 @@ public class EmailSender {
             "Your OTP code is: " + otpCode + "\n\n" +
             "This code is valid for " + otpExpiryMinutes + " minutes.\n" +
             "Do not share this with anyone.\n\n" +
-            "- Twine Team"
+            "- Team Twine"
         );
         return message;
     }
