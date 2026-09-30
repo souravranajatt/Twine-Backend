@@ -25,7 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class UserController {
 
     private final AuthRedisService authRedisService;
@@ -169,8 +169,8 @@ public class UserController {
         return ResponseEntity.ok("Logged out successfully");
     }
 
-    // Logout from specific device 
-    @DeleteMapping("/logout-device/{sessionId}")
+    // Logout from specific device / session
+    @DeleteMapping("/sessions/{sessionId}")
     public ResponseEntity<?> logoutSpecificDevice(@PathVariable String sessionId){
         try{
             userService.logoutSessionDevice(sessionId);

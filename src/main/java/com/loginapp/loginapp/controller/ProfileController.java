@@ -14,7 +14,7 @@ import com.loginapp.loginapp.service.ProfileService;
 
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/profile")
 public class ProfileController {
 
     private final ProfileService profileService;
@@ -23,8 +23,21 @@ public class ProfileController {
         this.profileService = profileService;
     }
 
+    // Logged User Profile Fetch End Point
+    @GetMapping("/me")    
+    public ResponseEntity<?> loggedUserData(){
+        try{
+            LoggedUserResponse finalResponse = profileService.fetchLoggedData();
+            return ResponseEntity.ok(finalResponse);
+        }catch(IllegalArgumentException err){
+            return ResponseEntity.badRequest().body(err.getMessage());
+        }catch(Exception e){
+            return ResponseEntity.status(500).body("Internal server error");
+        }
+    }
+
     // Search User Profile Fetch End Point ...
-    @GetMapping("/profile/{username}")
+    @GetMapping("/{username}")
     public ResponseEntity<?> profileByUsername(@PathVariable String username) {
         try {
             SearchUserResponse userSummary = profileService.userProfile(username.toLowerCase());
@@ -37,9 +50,9 @@ public class ProfileController {
     }
 
     // Search User Profile Post Data 
-    @GetMapping("/profile/{username}/post")
-    public ResponseEntity<List<PostFetchDTO>> getUserPost(@PathVariable String username,@RequestParam(defaultValue = "0") int page) {
-        try{
+    @GetMapping("/{username}/posts")
+    public ResponseEntity<List<PostFetchDTO>> getUserPost(@PathVariable String username, @RequestParam(defaultValue = "0") int page) {
+        try {
             List<PostFetchDTO> finalRes = profileService.getSearchUserPosts(username.toLowerCase(), page);
             return ResponseEntity.ok(finalRes);
         } catch (IllegalArgumentException e) {
@@ -49,10 +62,10 @@ public class ProfileController {
         }
     }
 
-    // Serach User Timeline Post Data 
-    @GetMapping("/profile/{username}/timeline")
-    public ResponseEntity<List<PostFetchDTO>> getTimelinePost(@PathVariable String username,@RequestParam(defaultValue = "0") int page) {
-        try{
+    // Search User Timeline Post Data 
+    @GetMapping("/{username}/timeline")
+    public ResponseEntity<List<PostFetchDTO>> getTimelinePost(@PathVariable String username, @RequestParam(defaultValue = "0") int page) {
+        try {
             List<PostFetchDTO> finalRes = profileService.getSearchUserTimelinePosts(username.toLowerCase(), page);
             return ResponseEntity.ok(finalRes);
         } catch (IllegalArgumentException e) {
@@ -62,10 +75,10 @@ public class ProfileController {
         }
     }
 
-    // Serach User Tagged Post Data 
-    @GetMapping("/profile/{username}/tagged")
-    public ResponseEntity<List<PostFetchDTO>> getTaggedPost(@PathVariable String username,@RequestParam(defaultValue = "0") int page) {
-        try{
+    // Search User Tagged Post Data 
+    @GetMapping("/{username}/tagged")
+    public ResponseEntity<List<PostFetchDTO>> getTaggedPost(@PathVariable String username, @RequestParam(defaultValue = "0") int page) {
+        try {
             List<PostFetchDTO> finalRes = profileService.getSearchUserTaggedPosts(username.toLowerCase(), page);
             return ResponseEntity.ok(finalRes);
         } catch (IllegalArgumentException e) {
@@ -74,23 +87,9 @@ public class ProfileController {
             return ResponseEntity.badRequest().body(Collections.emptyList());
         }
     }
-    
-
-    // Logged User Profile Fetch End Point
-    @GetMapping("/profile/data/loggeduser")    
-    public ResponseEntity<?> loggedUserData(){
-        try{
-            LoggedUserResponse finalResponse = profileService.fetchLoggedData();
-            return ResponseEntity.ok(finalResponse);
-        }catch(IllegalArgumentException err){
-            return ResponseEntity.badRequest().body(err.getMessage());
-        }catch(Exception e){
-            return ResponseEntity.status(500).body("Internal server error");
-        }
-    }
 
     // Follower List Fetch
-    @GetMapping("/profile/{targetUserId}/follower")
+    @GetMapping("/{targetUserId}/followers")
     public ResponseEntity<?> fetchFollowerList(@PathVariable Long targetUserId, @RequestParam(defaultValue = "0") int page) {
         try {
             List<FollowListFetchDTO> followers = profileService.followerListFetch(targetUserId, page);

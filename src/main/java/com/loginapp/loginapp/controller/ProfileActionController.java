@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/users")
 public class ProfileActionController {
     
     private final ProfileActionService profileActionService;
@@ -25,7 +25,7 @@ public class ProfileActionController {
 
 
     // Follow Endpoint
-    @PostMapping("/user/follow/{targetUserId}")
+    @PostMapping("/{targetUserId}/follow")
     public ResponseEntity<?> followButtonAction(@PathVariable Long targetUserId){
         try {
             profileActionService.followUser(targetUserId);
@@ -38,7 +38,7 @@ public class ProfileActionController {
     }
 
     // Unfollow
-    @DeleteMapping("/user/unfollow/{targetUserId}")
+    @DeleteMapping("/{targetUserId}/unfollow")
     public ResponseEntity<?> unfollowUser(@PathVariable Long targetUserId) {
         try {
             profileActionService.unfollowUser(targetUserId);
@@ -51,7 +51,7 @@ public class ProfileActionController {
     }
 
     // Cancel Request
-    @DeleteMapping("/user/follow/cancel/{targetUserId}")
+    @DeleteMapping("/{targetUserId}/follow/cancel")
     public ResponseEntity<?> cancelFollowRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.cancelFollowRequest(targetUserId);
@@ -64,7 +64,7 @@ public class ProfileActionController {
     }
 
     // Accept Request
-    @PostMapping("/user/follow/accept/{targetUserId}")
+    @PostMapping("/{targetUserId}/follow/accept")
     public ResponseEntity<?> acceptFollowRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.acceptFollowRequest(targetUserId);
@@ -77,7 +77,7 @@ public class ProfileActionController {
     }
 
     // Reject Request
-    @DeleteMapping("/user/follow/reject/{targetUserId}")
+    @DeleteMapping("/{targetUserId}/follow/reject")
     public ResponseEntity<?> rejectFollowRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.rejectFollowRequest(targetUserId);
@@ -90,7 +90,7 @@ public class ProfileActionController {
     }
 
     // Block User Endpoint
-    @PostMapping("/user/block/{targetUserId}")
+    @PostMapping("/{targetUserId}/block")
     public ResponseEntity<?> blockUserAction(@PathVariable Long targetUserId) {
         try {
             String result = profileActionService.blockUserAction(targetUserId);
@@ -103,7 +103,7 @@ public class ProfileActionController {
     }
 
     // Unblock User Endpoint
-    @DeleteMapping("/user/unblock/{targetUserId}")
+    @DeleteMapping("/{targetUserId}/unblock")
     public ResponseEntity<?> unblockUserAction(@PathVariable Long targetUserId) {
         try {
             String result = profileActionService.unblockUserAction(targetUserId);
@@ -116,7 +116,7 @@ public class ProfileActionController {
     }
 
     // Send Secret Crush Request Endpoint
-    @PostMapping("/user/secret-crush/{targetUserId}")
+    @PostMapping("/{targetUserId}/crush")
     public ResponseEntity<?> sendSecretCrushRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.sendAnonymousLike(targetUserId);

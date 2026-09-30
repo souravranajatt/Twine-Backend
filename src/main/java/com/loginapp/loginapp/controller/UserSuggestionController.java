@@ -12,7 +12,7 @@ import com.loginapp.loginapp.DTO.FollowListFetchDTO;
 import com.loginapp.loginapp.service.UserSuggestionService;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/users")
 public class UserSuggestionController {
     
     private final UserSuggestionService userSuggestionService;

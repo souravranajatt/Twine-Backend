@@ -38,11 +38,11 @@ public class SecurityConfig {
                 // Protect API's 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/signup",
-                                "/api/auth/send-otp",
-                                "/api/auth/verify-otp",
-                                "/api/auth/check-auth"
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/signup",
+                                "/api/v1/auth/send-otp",
+                                "/api/v1/auth/verify-otp",
+                                "/api/v1/auth/check-auth"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

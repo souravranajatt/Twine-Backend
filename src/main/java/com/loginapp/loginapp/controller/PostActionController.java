@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
-@RequestMapping("/api/v2/posts")
+@RequestMapping("/api/v1/posts")
 public class PostActionController {
 
     private final PostActionService postActionService;
@@ -199,7 +199,7 @@ public class PostActionController {
     }
 
     // Delete a post 
-    @DeleteMapping("/{postId}/delete")
+    @DeleteMapping("/{postId}")
     public ResponseEntity<?> deletePost(@PathVariable Long postId) {
         try {
             postActionService.deletePost(postId);

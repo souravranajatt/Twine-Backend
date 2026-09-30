@@ -12,7 +12,7 @@ import com.loginapp.loginapp.DTO.UserSearchDTO;
 import com.loginapp.loginapp.service.SearchService;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/search")
 public class SearchController {
 
     private final SearchService searchService;
@@ -22,7 +22,7 @@ public class SearchController {
     }
 
     // User Search Endpoint
-    @GetMapping("/search")
+    @GetMapping("/users")
     public ResponseEntity<List<UserSearchDTO>> searchUsers(@RequestParam String query) {
         try {
             List<UserSearchDTO> results = searchService.searchUsers(query);
@@ -36,7 +36,7 @@ public class SearchController {
     }
 
     // User Search for Tagging Endpoint
-    @GetMapping("/search/tagging")
+    @GetMapping("/tagging")
     public ResponseEntity<List<TaggingResult>> searchUsersForTagging(@RequestParam String query) {
         try {
             List<TaggingResult> results = searchService.searchUsersForTagging(query);

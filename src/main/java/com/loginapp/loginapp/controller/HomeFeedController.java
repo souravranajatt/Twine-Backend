@@ -10,7 +10,7 @@ import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.service.HomeFeedService;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/feed")
 public class HomeFeedController {
 
     private final HomeFeedService homeFeedService;
@@ -20,7 +20,7 @@ public class HomeFeedController {
     }
 
     // Home Feed API
-    @GetMapping("/feed")
+    @GetMapping
     public ResponseEntity<List<PostFetchDTO>> getHomeFeed(
             @RequestParam(defaultValue = "0") int page) {
 

@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
-@RequestMapping("/api/setting")
+@RequestMapping("/api/v1/settings")
 public class SettingController {
     
     private final SettingService settingService;
@@ -249,7 +249,7 @@ public class SettingController {
         }
     }
 
-    @GetMapping({"/security/login-activity", "/security/active-sessions"})
+    @GetMapping("/security/login-activity")
     public ResponseEntity<?> getLoginActivities(){
         try{
             List<UserSessionResponseDTO> loginActivities = settingService.fetchLoginActivities();

@@ -12,7 +12,7 @@ import com.loginapp.loginapp.DTO.FollowRequestListDTO;
 import com.loginapp.loginapp.service.FollowRequestListService;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/v1/users")
 public class FollowRequestListController {
 
     private final FollowRequestListService followRequestListService;
