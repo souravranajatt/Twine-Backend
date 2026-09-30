@@ -15,7 +15,6 @@ import com.loginapp.loginapp.DTO.PersonalDetailsDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
-import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.DTO.UserSessionResponseDTO;
 import com.loginapp.loginapp.entity.UserSession;
 import com.loginapp.loginapp.repository.UserSessionRepo;
@@ -23,6 +22,7 @@ import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.DefaultSetting;
 import com.loginapp.loginapp.Utils.PasswordHashing;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.AccountDeactivation;
@@ -33,18 +33,12 @@ import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.SettingPreferences;
 import com.loginapp.loginapp.repository.UsersRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
-import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
 import com.loginapp.loginapp.repository.SettingPreferencesRepo;
 import com.loginapp.loginapp.repository.AccountDeactivationRepo;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,13 +68,13 @@ public class SettingService {
 
     private final SavedPostRepo savedPostRepo;
 
-    private final PostLikeRepo postLikeRepo;
-
     private final SettingPreferencesRepo settingPreferencesRepo;
 
     private final DefaultSetting defaultSetting;
 
     private final UserSessionRepo userSessionRepo;
+
+    private final SocialFilterHelper socialFilterHelper;
 
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
@@ -94,7 +88,7 @@ public class SettingService {
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
-    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostLikeRepo postLikeRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting, UserSessionRepo userSessionRepo) {
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting, UserSessionRepo userSessionRepo, SocialFilterHelper socialFilterHelper) {
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
         this.cloudinaryService = cloudinaryService;
@@ -104,11 +98,11 @@ public class SettingService {
         this.blockRepo = blockRepo;
         this.accountDeactivationRepo = accountDeactivationRepo;
         this.savedPostRepo = savedPostRepo;
-        this.postLikeRepo = postLikeRepo;
         this.postRepo = postRepo;
         this.settingPreferencesRepo = settingPreferencesRepo;
         this.defaultSetting = defaultSetting;
         this.userSessionRepo = userSessionRepo;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
 
@@ -698,8 +692,7 @@ public class SettingService {
         List<PostFetchDTO> postFetchDTOList = new ArrayList<>();
 
         // User Blocked and Blocker Ids Batch Fetching
-        Set<Long> blockedUserIds = blockRepo.findBlockedUserIds(user);
-        Set<Long> blockedByUserIds = blockRepo.findBlockedByUserIds(user);
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(user);
 
         // Batch fetch owner ids for follow visibility check
         List<Long> postOwnerIds = savedPosts.stream()
@@ -716,11 +709,9 @@ public class SettingService {
                 .map(PostsEntity::getPostId)
                 .collect(Collectors.toList());
 
-        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                postLikeRepo.findLikedPostIdsByUserAndPostIds(user, postIds);
+        Set<Long> likedPostIds = socialFilterHelper.getLikedPostIds(user, postIds);
 
-        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                savedPostRepo.findSavedPostIdsByUserAndPostIds(user, postIds);
+        Set<Long> savedPostIds = socialFilterHelper.getSavedPostIds(user, postIds);
 
 
         for (PostsEntity post : savedPosts) {
@@ -728,7 +719,7 @@ public class SettingService {
             Users postOwner = post.getUserpost();
 
             // Skip posts from blocked users or users who have blocked the current user
-            if (blockedUserIds.contains(postOwner.getUserId()) || blockedByUserIds.contains(postOwner.getUserId())) {
+            if (blockedIds.contains(postOwner.getUserId())) {
                 continue;
             }
 
@@ -756,36 +747,9 @@ public class SettingService {
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
 
             // Tagged Users
-            Set<Long> allBlockedIds = new HashSet<>(blockedUserIds);
-            allBlockedIds.addAll(blockedByUserIds);
-            List<String> taggedUsersId = new ArrayList<>();
-            if (post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()) {
-                for (String taggedUser : post.getTaggedUsers()) {
-                    Long taggedUserId;
-                    try {
-                        taggedUserId = Long.valueOf(taggedUser);
-                    } catch (NumberFormatException e) {
-                        continue;
-                    }
-                    if (allBlockedIds.contains(taggedUserId)) {
-                        continue;
-                    }
-                    taggedUsersId.add(taggedUser);
-                }
-            }
-            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
-            List<TaggingResult> taggingResults = new ArrayList<>();
-            for (Users u : taggedUsers) {
-                TaggingResult dtoTag = new TaggingResult();
-                dtoTag.setUserId(u.getUserId().toString());
-                dtoTag.setUsername(u.getUsername());
-                dtoTag.setVerify(u.isVerifyTag());
-                if (u.getUserData() != null) {
-                    dtoTag.setProfileImage(u.getUserData().getProfilePhoto());
-                }
-                taggingResults.add(dtoTag);
-            }
-            dto.setFetchTaggedUsers(taggingResults);
+            dto.setFetchTaggedUsers(
+                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
+            );
 
             // Stats
             dto.setLikeCount(post.getLikeCount());

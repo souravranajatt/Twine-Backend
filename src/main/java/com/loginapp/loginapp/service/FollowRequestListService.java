@@ -3,7 +3,6 @@ package com.loginapp.loginapp.service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +12,6 @@ import com.loginapp.loginapp.DTO.FollowRequestListDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.Users;
-import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 
 @Service
@@ -23,12 +21,10 @@ public class FollowRequestListService {
 
     private final FollowRequestRepo followRequestRepo;
     private final AuthUtils authUtils;
-    private final BlockRepo blockRepo;
 
-    public FollowRequestListService(FollowRequestRepo followRequestRepo, AuthUtils authUtils, BlockRepo blockRepo) {
+    public FollowRequestListService(FollowRequestRepo followRequestRepo, AuthUtils authUtils) {
         this.followRequestRepo = followRequestRepo;
         this.authUtils = authUtils;
-        this.blockRepo = blockRepo;
     }
 
     // Service Logic for follow requests
@@ -45,10 +41,6 @@ public class FollowRequestListService {
             return Collections.emptyList();
         }
 
-        // Fetch blocked user IDs 
-        Set<Long> iBlocked = blockRepo.findBlockedUserIds(loggedUser);
-        Set<Long> blockedMe = blockRepo.findBlockedByUserIds(loggedUser);
-
         // Fetch paginated follow request records from database
         Pageable pageable = PageRequest.of(page, size);
         List<FollowRequestTable> followRequestEntities = followRequestRepo.findFollowRequestsForUser(loggedUser, pageable);
@@ -57,19 +49,14 @@ public class FollowRequestListService {
             return Collections.emptyList();
         }
 
-        // Map entities to DTOs while filtering out blocked/inactive users
+        // Map entities to DTOs while filtering out inactive users
         List<FollowRequestListDTO> resultList = new ArrayList<>();
 
         for (FollowRequestTable request : followRequestEntities) {
             Users sender = request.getSenderId();
 
-            // Skip if sender is null, deleted, suspended, or involved in a block relationship
+            // Skip if sender is null, deleted, or suspended
             if (sender == null || sender.isStatusDeleted() || sender.isStatusSuspend()) {
-                continue;
-            }
-
-            Long senderId = sender.getUserId();
-            if (iBlocked.contains(senderId) || blockedMe.contains(senderId)) {
                 continue;
             }
 

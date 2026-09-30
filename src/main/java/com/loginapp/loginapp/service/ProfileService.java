@@ -1,6 +1,5 @@
 package com.loginapp.loginapp.service;
 
-import com.loginapp.loginapp.repository.SavedPostRepo;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.domain.PageRequest;
@@ -11,8 +10,8 @@ import com.loginapp.loginapp.DTO.FollowListFetchDTO;
 import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
-import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserData;
@@ -20,7 +19,6 @@ import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
-import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SecretCrushRepo;
 import com.loginapp.loginapp.repository.SecretCrushRequestRepo;
@@ -34,8 +32,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 @Transactional
 public class ProfileService {
-
-    private final SavedPostRepo savedPostRepo;
 
     private final UsersRepo usersRepo;
 
@@ -51,15 +47,14 @@ public class ProfileService {
 
     private final SecretCrushRequestRepo secretCrushRequestRepo;
 
-    private final PostLikeRepo postLikeRepo;
-
     private final AuthUtils authUtils;
 
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
 
-    ProfileService(SavedPostRepo savedPostRepo, UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, PostLikeRepo postLikeRepo, AuthUtils authUtils, RedisService redisService, ObjectMapper objectMapper) {
-        this.savedPostRepo = savedPostRepo;
+    private final SocialFilterHelper socialFilterHelper;
+
+    ProfileService(UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, AuthUtils authUtils, RedisService redisService, ObjectMapper objectMapper, SocialFilterHelper socialFilterHelper) {
         this.usersRepo = usersRepo;
         this.followRepo = followRepo;
         this.postRepo = postRepo;
@@ -67,10 +62,10 @@ public class ProfileService {
         this.blockRepo = blockRepo;
         this.secretCrushRepo = secretCrushRepo;
         this.secretCrushRequestRepo = secretCrushRequestRepo;
-        this.postLikeRepo = postLikeRepo;
         this.authUtils = authUtils;
         this.redisService = redisService;
         this.objectMapper = objectMapper;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
 
@@ -244,22 +239,12 @@ public class ProfileService {
                 .map(PostsEntity::getPostId)
                 .collect(Collectors.toList());
 
-        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
+        Set<Long> likedPostIds = socialFilterHelper.getLikedPostIds(loggedUser, postIds);
 
-        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
+        Set<Long> savedPostIds = socialFilterHelper.getSavedPostIds(loggedUser, postIds);
 
-        // Batch Fetch Blocked Users
-        List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
-            .stream()
-            .map(block -> block.getUserId())
-            .collect(Collectors.toList());
-
-        List<Long> blockedMe = blockRepo.findBlockedByUsers(loggedUser)
-            .stream()
-            .map(block -> block.getUserId())
-            .collect(Collectors.toList());
+        // Batch Fetch Blocked User IDs
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
 
         for(PostsEntity post : posts){
 
@@ -274,42 +259,9 @@ public class ProfileService {
             dto.setFetchVerified(userRes.isVerifyTag());
 
             // Set Tagged Users
-            // 1. Find all tagged user for the post 
-            List<String> taggedUsersId = new ArrayList<>();
-            if(post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()){
-                for(String taggedUser : post.getTaggedUsers()){
-                    Long taggedUserId;
-                    try {
-                        taggedUserId = Long.valueOf(taggedUser);
-                    } catch (NumberFormatException e) {
-                        continue; // Ignore invalid tagged user IDs
-                    }
-
-                    // Check if tagged user is blocked by logged-in user or blocked logged-in user
-                    if(blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)){
-                        continue; // Skip this tagged user
-                    }
-                    // Add to the list of tagged users
-                    taggedUsersId.add(taggedUser);
-                }
-            }
-
-            // 2. Get the list of tagged users' details from the database
-            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
-
-            // 3. Convert to DTOs
-            List<TaggingResult> taggingResults = new ArrayList<>();
-            for(Users user : taggedUsers){
-                TaggingResult dtoTag = new TaggingResult();
-                dtoTag.setUserId(user.getUserId().toString());
-                dtoTag.setUsername(user.getUsername());
-                dtoTag.setVerify(user.isVerifyTag());
-                if (user.getUserData() != null) {
-                    dtoTag.setProfileImage(user.getUserData().getProfilePhoto());
-                }
-                taggingResults.add(dtoTag);
-            }
-            dto.setFetchTaggedUsers(taggingResults);
+            dto.setFetchTaggedUsers(
+                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
+            );
 
             // Set Post User Details
             dto.setFullname(post.getUserpost().getFullname());
@@ -411,22 +363,12 @@ public class ProfileService {
         .map(PostsEntity::getPostId)
         .collect(Collectors.toList());
 
-        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
+        Set<Long> likedPostIds = socialFilterHelper.getLikedPostIds(loggedUser, postIds);
 
-        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
+        Set<Long> savedPostIds = socialFilterHelper.getSavedPostIds(loggedUser, postIds);
 
-        // Batch Fetch Blocked Users
-        List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
-            .stream()
-            .map(block -> block.getUserId())
-            .collect(Collectors.toList());
-
-        List<Long> blockedMe = blockRepo.findBlockedByUsers(loggedUser)
-            .stream()
-            .map(block -> block.getUserId())
-            .collect(Collectors.toList());
+        // Batch Fetch Blocked User IDs
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
         
         for(PostsEntity post : posts){
 
@@ -439,43 +381,12 @@ public class ProfileService {
             dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
             dto.setFetchUploadAt(post.getUploadAt());
 
+
             // Set Tagged Users
-            // 1. Find all tagged user for the post 
-            List<String> taggedUsersId = new ArrayList<>();
-            if(post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()){
-                for(String taggedUser : post.getTaggedUsers()){
-                    Long taggedUserId;
-                    try {
-                        taggedUserId = Long.valueOf(taggedUser);
-                    } catch (NumberFormatException e) {
-                        continue; // Ignore invalid tagged user IDs
-                    }
+            dto.setFetchTaggedUsers(
+                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
+            );
 
-                    // Check if tagged user is blocked by logged-in user or blocked logged-in user
-                    if(blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)){
-                        continue; // Skip this tagged user
-                    }
-                    // Add to the list of tagged users
-                    taggedUsersId.add(taggedUser);
-                }
-            }
-
-            // 2. Get the list of tagged users' details from the database
-            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
-
-            // 3. Convert to DTOs
-            List<TaggingResult> taggingResults = new ArrayList<>();
-            for(Users user : taggedUsers){
-                TaggingResult dtoTag = new TaggingResult();
-                dtoTag.setUserId(user.getUserId().toString());
-                dtoTag.setUsername(user.getUsername());
-                dtoTag.setVerify(user.isVerifyTag());
-                if (user.getUserData() != null) {
-                    dtoTag.setProfileImage(user.getUserData().getProfilePhoto());
-                }
-                taggingResults.add(dtoTag);
-            }
-            dto.setFetchTaggedUsers(taggingResults);
             
 
             // Set Post User Details
@@ -548,16 +459,8 @@ public class ProfileService {
             return Collections.emptyList();
         }
 
-        // check if postowner blocked me or blocked by me them return nothing
-        List<Long> blockedByMe = blockRepo.findBlockedUsers(loggedUser)
-            .stream()
-            .map(block -> block.getUserId())
-            .collect(Collectors.toList());
-
-        List<Long> blockedMe = blockRepo.findBlockedByUsers(loggedUser)
-            .stream()
-            .map(block -> block.getUserId())
-            .collect(Collectors.toList());
+        // Batch Fetch Blocked User IDs
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
 
 
         Pageable pageable = PageRequest.of(page, 10);
@@ -580,17 +483,15 @@ public class ProfileService {
         Set<Long> followedUserIds = postOwnerIds.isEmpty() ? Collections.emptySet()
                 : followRepo.findFollowingIds(loggedUser, postOwnerIds);
 
-        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                postLikeRepo.findLikedPostIdsByUserAndPostIds(loggedUser, postIds);
+        Set<Long> likedPostIds = socialFilterHelper.getLikedPostIds(loggedUser, postIds);
 
-        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-                savedPostRepo.findSavedPostIdsByUserAndPostIds(loggedUser, postIds);
+        Set<Long> savedPostIds = socialFilterHelper.getSavedPostIds(loggedUser, postIds);
 
         for(PostsEntity post : posts){
 
             // Check if post owner blocked me or I blocked post owner
             Long postOwnerUserId = post.getUserpost().getUserId();
-            if(blockedByMe.contains(postOwnerUserId) || blockedMe.contains(postOwnerUserId)){
+            if(blockedIds.contains(postOwnerUserId)){
                 continue;
             }
 
@@ -610,42 +511,9 @@ public class ProfileService {
             dto.setFetchVerified(userRes.isVerifyTag());
 
             // Set Tagged Users
-            // 1. Find all tagged user for the post 
-            List<String> taggedUsersId = new ArrayList<>();
-            if(post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()){
-                for(String taggedUser : post.getTaggedUsers()){
-                    Long taggedUserId;
-                    try {
-                        taggedUserId = Long.valueOf(taggedUser);
-                    } catch (NumberFormatException e) {
-                        continue; // Ignore invalid tagged user IDs
-                    }
-
-                    // Check if tagged user is blocked by logged-in user or blocked logged-in user
-                    if(blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)){
-                        continue; // Skip this tagged user
-                    }
-                    // Add to the list of tagged users
-                    taggedUsersId.add(taggedUser);
-                }
-            }
-
-            // 2. Get the list of tagged users' details from the database
-            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
-
-            // 3. Convert to DTOs
-            List<TaggingResult> taggingResults = new ArrayList<>();
-            for(Users user : taggedUsers){
-                TaggingResult dtoTag = new TaggingResult();
-                dtoTag.setUserId(user.getUserId().toString());
-                dtoTag.setUsername(user.getUsername());
-                dtoTag.setVerify(user.isVerifyTag());
-                if (user.getUserData() != null) {
-                    dtoTag.setProfileImage(user.getUserData().getProfilePhoto());
-                }
-                taggingResults.add(dtoTag);
-            }
-            dto.setFetchTaggedUsers(taggingResults);
+            dto.setFetchTaggedUsers(
+                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
+            );
 
             // Set Post User Details
             dto.setFullname(post.getUserpost().getFullname());
@@ -723,13 +591,11 @@ public class ProfileService {
         if (followers.isEmpty()) return Collections.emptyList();
 
         // Block IDs batch fetch
-        Set<Long> iBlocked = blockRepo.findBlockedUserIds(userOne);
-        Set<Long> blockedMe = blockRepo.findBlockedByUserIds(userOne);
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(userOne);
 
         // Filter blocked users
         List<Users> filteredFollowers = followers.stream()
-                .filter(f -> !iBlocked.contains(f.getUserId()) 
-                        && !blockedMe.contains(f.getUserId()))
+                .filter(f -> !blockedIds.contains(f.getUserId()))
                 .toList();
 
         if (filteredFollowers.isEmpty()) return Collections.emptyList();

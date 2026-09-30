@@ -18,9 +18,9 @@ import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
-import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
@@ -29,10 +29,8 @@ import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.PostCommentRepo;
-import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostMediaRepo;
 import com.loginapp.loginapp.repository.PostRepo;
-import com.loginapp.loginapp.repository.SavedPostRepo;
 import com.loginapp.loginapp.repository.SettingPreferencesRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 
@@ -61,15 +59,13 @@ public class PostService {
 
     private final BlockRepo blockRepo;
 
-    private final PostLikeRepo postLikeRepo;
-
-    private final SavedPostRepo savedPostRepo;
-
     private final PostCommentRepo postCommentRepo;
 
     private final SettingPreferencesRepo settingPreferencesRepo;
 
     private final UsersRepo usersRepo;
+
+    private final SocialFilterHelper socialFilterHelper;
 
     PostService(
         PostRepo postRepo,
@@ -79,11 +75,10 @@ public class PostService {
         CloudinaryService cloudinaryService,
         FollowRepo followRepo,
         BlockRepo blockRepo,
-        PostLikeRepo postLikeRepo,
-        SavedPostRepo savedPostRepo,
         PostCommentRepo postCommentRepo,
         SettingPreferencesRepo settingPreferencesRepo,
-        UsersRepo usersRepo
+        UsersRepo usersRepo,
+        SocialFilterHelper socialFilterHelper
     ) {
         this.postRepo = postRepo;
         this.authUtils = authUtils;
@@ -92,11 +87,10 @@ public class PostService {
         this.cloudinaryService = cloudinaryService;
         this.followRepo = followRepo;
         this.blockRepo = blockRepo;
-        this.postLikeRepo = postLikeRepo;
-        this.savedPostRepo = savedPostRepo;
         this.postCommentRepo = postCommentRepo;
         this.settingPreferencesRepo = settingPreferencesRepo;
         this.usersRepo = usersRepo;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
     // ******************** POST UPLOAD ************************
@@ -290,8 +284,8 @@ public class PostService {
         }
 
         // Like & Save status
-        boolean isLiked = postLikeRepo.existsByPostAndUser(post, user);
-        boolean isSaved = savedPostRepo.existsByUserAndPost(user, post);
+        boolean isLiked = socialFilterHelper.isPostLiked(user, post);
+        boolean isSaved = socialFilterHelper.isPostSaved(user, post);
 
         // Post details
         dto.setFetchPostId(String.valueOf(post.getPostId()));
@@ -302,39 +296,10 @@ public class PostService {
         dto.setFullname(postOwner.getFullname());
 
         // Set Tagged Users
-        Set<Long> blockedByMe = new HashSet<>();
-        blockRepo.findBlockedUsers(user).forEach(u -> blockedByMe.add(u.getUserId()));
-        Set<Long> blockedMe = new HashSet<>();
-        blockRepo.findBlockedByUsers(user).forEach(u -> blockedMe.add(u.getUserId()));
-
-        List<String> taggedUsersId = new ArrayList<>();
-        if (post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()) {
-            for (String taggedUser : post.getTaggedUsers()) {
-                Long taggedUserId;
-                try {
-                    taggedUserId = Long.valueOf(taggedUser);
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-                if (blockedByMe.contains(taggedUserId) || blockedMe.contains(taggedUserId)) {
-                    continue;
-                }
-                taggedUsersId.add(taggedUser);
-            }
-        }
-        List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
-        List<TaggingResult> taggingResults = new ArrayList<>();
-        for (Users u : taggedUsers) {
-            TaggingResult dtoTag = new TaggingResult();
-            dtoTag.setUserId(u.getUserId().toString());
-            dtoTag.setUsername(u.getUsername());
-            dtoTag.setVerify(u.isVerifyTag());
-            if (u.getUserData() != null) {
-                dtoTag.setProfileImage(u.getUserData().getProfilePhoto());
-            }
-            taggingResults.add(dtoTag);
-        }
-        dto.setFetchTaggedUsers(taggingResults);
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(user);
+        dto.setFetchTaggedUsers(
+            socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
+        );
 
         // Stats
         dto.setLikeCount(post.getLikeCount());
@@ -373,6 +338,9 @@ public class PostService {
             throw new IllegalArgumentException("Post no longer available!");
         }
 
+        // Get blocked user IDs (both directions)
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
+
         Pageable pageable = PageRequest.of(page, 15);
         List<PostComment> comments = postCommentRepo.findCommentsByPost(postId, pageable);
 
@@ -380,6 +348,12 @@ public class PostService {
 
         List<PostCommentFetchDTO> dtoList = new ArrayList<>();
         for (PostComment comment : comments) {
+
+            // Skip comments from blocked users
+            if (blockedIds.contains(comment.getUser().getUserId())) {
+                continue;
+            }
+
             PostCommentFetchDTO dto = new PostCommentFetchDTO();
 
             dto.setCommentId(String.valueOf(comment.getCommentId()));

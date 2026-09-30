@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostFetchDTO;
-import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserCategoryAffinity;
@@ -26,33 +26,24 @@ public class HomeFeedService {
     private final FollowRepo followRepo;
     private final HomeFeedRepo homeFeedRepo;
     private final UserAffinityRepo userAffinityRepo;
-    private final BlockRepo blockRepo;
-    private final PostLikeRepo postLikeRepo;
-    private final SavedPostRepo savedPostRepo;
     private final PostSeenRepo postSeenRepo;
     private final AuthUtils authUtils;
-    private final UsersRepo usersRepo;
+    private final SocialFilterHelper socialFilterHelper;
 
     HomeFeedService(
         FollowRepo followRepo,
         AuthUtils authUtils,
-        BlockRepo blockRepo,
         UserAffinityRepo userAffinityRepo,
-        PostLikeRepo postLikeRepo,
         HomeFeedRepo homeFeedRepo,
-        SavedPostRepo savedPostRepo,
         PostSeenRepo postSeenRepo,
-        UsersRepo usersRepo
+        SocialFilterHelper socialFilterHelper
     ){
         this.followRepo = followRepo;
         this.authUtils = authUtils;
-        this.blockRepo = blockRepo;
         this.userAffinityRepo = userAffinityRepo;
-        this.postLikeRepo = postLikeRepo;
         this.homeFeedRepo = homeFeedRepo;
-        this.savedPostRepo = savedPostRepo;
         this.postSeenRepo = postSeenRepo;
-        this.usersRepo = usersRepo;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
     public List<PostFetchDTO> getHomeFeed(int page) {
@@ -64,9 +55,7 @@ public class HomeFeedService {
         }
 
         // 2. Get all Blocked and Blocker IDs
-        Set<Long> blockedIds = new HashSet<>();
-        blockRepo.findBlockedUsers(user).forEach(u -> blockedIds.add(u.getUserId()));
-        blockRepo.findBlockedByUsers(user).forEach(u -> blockedIds.add(u.getUserId()));
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(user);
 
         // 3. Get all viewed Post IDs
         Set<Long> seenPostIds = postSeenRepo.findSeenPostIdsByUser(user);
@@ -164,11 +153,9 @@ public class HomeFeedService {
             .map(PostsEntity::getPostId)
             .toList();
 
-        Set<Long> likedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-            postLikeRepo.findLikedPostIdsByUserAndPostIds(user, postIds);
+        Set<Long> likedPostIds = socialFilterHelper.getLikedPostIds(user, postIds);
 
-        Set<Long> savedPostIds = postIds.isEmpty() ? Collections.emptySet() :
-            savedPostRepo.findSavedPostIdsByUserAndPostIds(user, postIds);
+        Set<Long> savedPostIds = socialFilterHelper.getSavedPostIds(user, postIds);
 
         // 14. DTO Convert
         List<PostFetchDTO> dtoList = new ArrayList<>();
@@ -192,34 +179,9 @@ public class HomeFeedService {
             dto.setFetchVerified(post.getUserpost().isVerifyTag());
 
             // Tagged Users
-            List<String> taggedUsersId = new ArrayList<>();
-            if (post.getTaggedUsers() != null && !post.getTaggedUsers().isEmpty()) {
-                for (String taggedUser : post.getTaggedUsers()) {
-                    Long taggedUserId;
-                    try {
-                        taggedUserId = Long.valueOf(taggedUser);
-                    } catch (NumberFormatException e) {
-                        continue;
-                    }
-                    if (blockedIds.contains(taggedUserId)) {
-                        continue;
-                    }
-                    taggedUsersId.add(taggedUser);
-                }
-            }
-            List<Users> taggedUsers = usersRepo.findTaggedUsersByIds(taggedUsersId);
-            List<TaggingResult> taggingResults = new ArrayList<>();
-            for (Users u : taggedUsers) {
-                TaggingResult dtoTag = new TaggingResult();
-                dtoTag.setUserId(u.getUserId().toString());
-                dtoTag.setUsername(u.getUsername());
-                dtoTag.setVerify(u.isVerifyTag());
-                if (u.getUserData() != null) {
-                    dtoTag.setProfileImage(u.getUserData().getProfilePhoto());
-                }
-                taggingResults.add(dtoTag);
-            }
-            dto.setFetchTaggedUsers(taggingResults);
+            dto.setFetchTaggedUsers(
+                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
+            );
 
             // Stats
             dto.setLikeCount(post.getLikeCount());

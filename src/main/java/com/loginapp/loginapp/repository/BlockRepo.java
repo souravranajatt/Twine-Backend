@@ -11,30 +11,21 @@ import com.loginapp.loginapp.entity.Users;
 
 public interface BlockRepo extends JpaRepository<BlockUser, Long> {
 
-    // Custom query to check if a block relationship exists between two users
+    // Check if a block relationship exists between two users
     boolean existsByBlockerAndBlocked(Users blocker, Users blocked);
-    
-    // Custom query to find a block relationship between two users
-    BlockUser findByBlockerAndBlocked(Users blocker, Users blocked);
 
-    // Custom query to delete a block relationship between two users
+    // Delete a block relationship between two users
     void deleteByBlockerAndBlocked(Users blocker, Users blocked);
 
-    // Custom query to find all users blocked by a specific user
+    // Find all active users blocked by a specific user (used in Settings)
     @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user AND b.blocked.statusDeleted = false")
     List<Users> findActiveBlockedUsers(@Param("user") Users user);
 
-    // Used in profile service for tagged posts 
-    @Query("SELECT b.blocked FROM BlockUser b WHERE b.blocker = :user")
-    List<Users> findBlockedUsers(@Param("user") Users user); // Blocked by Logged User
-
-    @Query("SELECT b.blocker FROM BlockUser b WHERE b.blocked = :user")
-    List<Users> findBlockedByUsers(@Param("user") Users user); // Logged User Blocked by Others
-
-    // Used For Follower Fetch in profile service
-    @Query("SELECT b.blocked.userId FROM BlockUser b WHERE b.blocker = :user")
-    Set<Long> findBlockedUserIds(@Param("user") Users user); // Blocked by Logged User
-
-    @Query("SELECT b.blocker.userId FROM BlockUser b WHERE b.blocked = :user")
-    Set<Long> findBlockedByUserIds(@Param("user") Users user); // Logged User Blocked by Others
+    // Single-query batch fetch for all blocked user IDs in both directions (blocked by user OR blocked user)
+    @Query("""
+        SELECT CASE WHEN b.blocker = :user THEN b.blocked.userId ELSE b.blocker.userId END 
+        FROM BlockUser b 
+        WHERE b.blocker = :user OR b.blocked = :user
+    """)
+    Set<Long> findAllBlockedUserIds(@Param("user") Users user);
 }

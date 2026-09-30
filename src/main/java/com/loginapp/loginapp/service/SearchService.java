@@ -6,9 +6,9 @@ import org.springframework.stereotype.Service;
 import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.DTO.UserSearchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.SettingPreferences;
 import com.loginapp.loginapp.entity.Users;
-import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
 import java.util.*;
@@ -20,15 +20,15 @@ public class SearchService {
 
     private final UsersRepo usersRepo;
 
-    private final BlockRepo blockRepo;
-
     private final FollowRepo followRepo;
 
-    public SearchService(UsersRepo usersRepo, BlockRepo blockRepo, AuthUtils authUtils, FollowRepo followRepo) {
+    private final SocialFilterHelper socialFilterHelper;
+
+    public SearchService(UsersRepo usersRepo, AuthUtils authUtils, FollowRepo followRepo, SocialFilterHelper socialFilterHelper) {
         this.usersRepo = usersRepo;
-        this.blockRepo = blockRepo;
         this.authUtils = authUtils;
         this.followRepo = followRepo;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
     // Search users by username or fullname
@@ -48,9 +48,7 @@ public class SearchService {
         List<Users> filteredUser = new ArrayList<>();
         
         // Now check User is blocked or not 
-        Set<Long> blockUserIds = new HashSet<>();
-        blockRepo.findBlockedUserIds(loggedUser).forEach(blockUserIds::add); // Add all users blocked by the logged user
-        blockRepo.findBlockedByUserIds(loggedUser).forEach(blockUserIds::add); // Add all users who have blocked the logged user
+        Set<Long> blockUserIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
         
 
         // Filter out blocked users from the search results
@@ -187,9 +185,7 @@ public class SearchService {
         List<Users> filtreResults = new ArrayList<>();
 
          // Now check User is blocked or not 
-        Set<Long> blockUserIds = new HashSet<>();
-        blockRepo.findBlockedUserIds(loggedUser).forEach(blockUserIds::add); // Add all users blocked by the logged user
-        blockRepo.findBlockedByUserIds(loggedUser).forEach(blockUserIds::add); // Add all users who have blocked the logged user
+        Set<Long> blockUserIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
 
         // Filter out blocked users from the search results
         for (Users user : users) {

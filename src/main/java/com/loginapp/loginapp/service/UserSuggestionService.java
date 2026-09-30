@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 
 import com.loginapp.loginapp.DTO.FollowListFetchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.Users;
-import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.FollowRequestRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
@@ -20,16 +20,16 @@ public class UserSuggestionService {
     
     private final UsersRepo usersRepo;
     private final FollowRepo followRepo;
-    private final BlockRepo blockRepo;
     private final FollowRequestRepo followRequestRepo;
     private final AuthUtils authUtils;
+    private final SocialFilterHelper socialFilterHelper;
 
-    public UserSuggestionService(UsersRepo usersRepo, FollowRepo followRepo, BlockRepo blockRepo, FollowRequestRepo followRequestRepo, AuthUtils authUtils) {
+    public UserSuggestionService(UsersRepo usersRepo, FollowRepo followRepo, FollowRequestRepo followRequestRepo, AuthUtils authUtils, SocialFilterHelper socialFilterHelper) {
         this.usersRepo = usersRepo;
         this.followRepo = followRepo;
-        this.blockRepo = blockRepo;
         this.followRequestRepo = followRequestRepo;
         this.authUtils = authUtils;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
     // Default overloaded suggestion list
@@ -57,8 +57,7 @@ public class UserSuggestionService {
         Set<Long> sentRequestIds = followRequestRepo.findSentFollowRequestReceiverIds(loggedUser);
 
         // Fetch Blocked User IDs (both directions)
-        Set<Long> iBlocked = blockRepo.findBlockedUserIds(loggedUser);
-        Set<Long> blockedMe = blockRepo.findBlockedByUserIds(loggedUser);
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
 
         LinkedHashMap<Long, Users> candidateMap = new LinkedHashMap<>();
 
@@ -70,8 +69,7 @@ public class UserSuggestionService {
                 if (row[0] instanceof Users candidate) {
                     if (!myFollowingIds.contains(candidate.getUserId())
                             && !sentRequestIds.contains(candidate.getUserId())
-                            && !iBlocked.contains(candidate.getUserId())
-                            && !blockedMe.contains(candidate.getUserId())
+                            && !blockedIds.contains(candidate.getUserId())
                             && !candidate.isStatusDeleted()
                             && !candidate.isStatusSuspend()) {
                         candidateMap.put(candidate.getUserId(), candidate);
@@ -93,8 +91,7 @@ public class UserSuggestionService {
             for (Users user : recentUsers) {
                 if (!myFollowingIds.contains(user.getUserId())
                         && !sentRequestIds.contains(user.getUserId())
-                        && !iBlocked.contains(user.getUserId())
-                        && !blockedMe.contains(user.getUserId())
+                        && !blockedIds.contains(user.getUserId())
                         && !user.isStatusDeleted()
                         && !user.isStatusSuspend()) {
                     candidateMap.putIfAbsent(user.getUserId(), user);
