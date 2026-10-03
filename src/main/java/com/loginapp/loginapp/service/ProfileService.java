@@ -11,8 +11,8 @@ import com.loginapp.loginapp.DTO.LoggedUserResponse;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.SearchUserResponse;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.PostDTOMapper;
 import com.loginapp.loginapp.Utils.SocialFilterHelper;
-import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.Users;
@@ -54,7 +54,9 @@ public class ProfileService {
 
     private final SocialFilterHelper socialFilterHelper;
 
-    ProfileService(UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, AuthUtils authUtils, RedisService redisService, ObjectMapper objectMapper, SocialFilterHelper socialFilterHelper) {
+    private final PostDTOMapper postDTOMapper;
+
+    ProfileService(UsersRepo usersRepo, FollowRepo followRepo, PostRepo postRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo, SecretCrushRequestRepo secretCrushRequestRepo, AuthUtils authUtils, RedisService redisService, ObjectMapper objectMapper, SocialFilterHelper socialFilterHelper, PostDTOMapper postDTOMapper) {
         this.usersRepo = usersRepo;
         this.followRepo = followRepo;
         this.postRepo = postRepo;
@@ -66,6 +68,7 @@ public class ProfileService {
         this.redisService = redisService;
         this.objectMapper = objectMapper;
         this.socialFilterHelper = socialFilterHelper;
+        this.postDTOMapper = postDTOMapper;
     }
 
 
@@ -247,58 +250,7 @@ public class ProfileService {
         Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
 
         for(PostsEntity post : posts){
-
-            PostFetchDTO dto = new PostFetchDTO();
-
-            dto.setFetchPostId(String.valueOf(post.getPostId()));
-            dto.setFetchFileName(post.getFileName());
-            dto.setFetchPostLocation(post.getPostLocation());
-            dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
-            dto.setFetchUploadAt(post.getUploadAt());
-            dto.setFetchVerified(userRes.isVerifyTag());
-
-            // Set Tagged Users
-            dto.setFetchTaggedUsers(
-                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
-            );
-
-            // Set Post User Details
-            dto.setFullname(post.getUserpost().getFullname());
-            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
-            dto.setUsername(post.getUserpost().getUsername());
-            if(post.getUserpost().getUserData() != null){
-                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
-            }
-
-            PostMedia media = post.getPostMedia();
-            if (media != null) {
-                dto.setWidth(media.getWidth());
-                dto.setHeight(media.getHeight());
-                dto.setDuration(media.getDuration());
-
-                if (media.getPostType() != null) {
-                    dto.setPostType(media.getPostType().name());
-                }
-            }
-
-            // Set Counts
-            dto.setCommentCount(post.getCommentCount());
-            dto.setLikeCount(post.getLikeCount());
-            dto.setSaveCount(post.getSaveCount());
-            dto.setViewCount(post.getViewCount());
-
-            // Set Post Settings
-            dto.setCommentEnable(post.getCommentEnabled());
-            dto.setLikeVisible(post.getLikeVisible());
-            dto.setShareEnable(post.getShareEnabled());
-            dto.setOwnPost(post.getUserpost().getUserId().equals(loggedUser.getUserId()));
-
-            // Set Like Flag
-            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
-            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
-
-            postsList.add(dto);
+            postsList.add(postDTOMapper.toDTO(post, loggedUser, blockedIds, likedPostIds, savedPostIds));
         }
 
         return postsList;
@@ -371,56 +323,7 @@ public class ProfileService {
         Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);
         
         for(PostsEntity post : posts){
-
-            PostFetchDTO dto = new PostFetchDTO();
-
-            dto.setFetchPostId(String.valueOf(post.getPostId()));
-            dto.setFetchFileName(post.getFileName());
-            dto.setFetchPostLocation(post.getPostLocation());
-            dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
-            dto.setFetchUploadAt(post.getUploadAt());
-
-
-            // Set Tagged Users
-            dto.setFetchTaggedUsers(
-                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
-            );
-
-            
-
-            // Set Post User Details
-            dto.setFullname(post.getUserpost().getFullname());
-            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
-            dto.setUsername(post.getUserpost().getUsername());
-            if(post.getUserpost().getUserData() != null){
-                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
-            }
-            dto.setFetchVerified(userRes.isVerifyTag());
-
-            PostMedia media = post.getPostMedia();
-            if (media != null) {
-                dto.setWidth(media.getWidth());
-                dto.setHeight(media.getHeight());
-                dto.setDuration(media.getDuration());
-                dto.setPostType(media.getPostType().name());
-            }
-
-            dto.setCommentCount(post.getCommentCount());
-            dto.setLikeCount(post.getLikeCount());
-            dto.setSaveCount(post.getSaveCount());
-            dto.setViewCount(post.getViewCount());
-
-            dto.setCommentEnable(post.getCommentEnabled());
-            dto.setLikeVisible(post.getLikeVisible());
-            dto.setShareEnable(post.getShareEnabled());
-            dto.setOwnPost(post.getUserpost().getUserId().equals(loggedUser.getUserId()));
-
-            // Set Like Flag
-            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
-            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
-
-            postsList.add(dto);
+            postsList.add(postDTOMapper.toDTO(post, loggedUser, blockedIds, likedPostIds, savedPostIds));
         }
 
         return postsList;
@@ -500,53 +403,7 @@ public class ProfileService {
                 continue;
             }
 
-            PostFetchDTO dto = new PostFetchDTO();
-
-            dto.setFetchPostId(String.valueOf(post.getPostId()));
-            dto.setFetchFileName(post.getFileName());
-            dto.setFetchPostLocation(post.getPostLocation());
-            dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchTimelineUser(String.valueOf(post.getTimelineUser()));
-            dto.setFetchUploadAt(post.getUploadAt());
-            dto.setFetchVerified(userRes.isVerifyTag());
-
-            // Set Tagged Users
-            dto.setFetchTaggedUsers(
-                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
-            );
-
-            // Set Post User Details
-            dto.setFullname(post.getUserpost().getFullname());
-            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
-            dto.setUsername(post.getUserpost().getUsername());
-            dto.setFetchVerified(post.getUserpost().isVerifyTag());
-            if(post.getUserpost().getUserData() != null){
-                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
-            }
-
-            PostMedia media = post.getPostMedia();
-            if (media != null) {
-                dto.setWidth(media.getWidth());
-                dto.setHeight(media.getHeight());
-                dto.setDuration(media.getDuration());
-                dto.setPostType(media.getPostType().name());
-            }
-
-            dto.setCommentCount(post.getCommentCount());
-            dto.setLikeCount(post.getLikeCount());
-            dto.setSaveCount(post.getSaveCount());
-            dto.setViewCount(post.getViewCount());
-
-            dto.setCommentEnable(post.getCommentEnabled());
-            dto.setLikeVisible(post.getLikeVisible());
-            dto.setShareEnable(post.getShareEnabled());
-            dto.setOwnPost(post.getUserpost().getUserId().equals(loggedUser.getUserId()));
-
-            // Set Like Flag
-            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
-            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
-
-            postsList.add(dto);
+            postsList.add(postDTOMapper.toDTO(post, loggedUser, blockedIds, likedPostIds, savedPostIds));
         }
 
         return postsList;

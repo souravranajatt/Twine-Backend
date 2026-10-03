@@ -10,8 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.PostDTOMapper;
 import com.loginapp.loginapp.Utils.SocialFilterHelper;
-import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.UserCategoryAffinity;
 import com.loginapp.loginapp.entity.Users;
@@ -29,6 +29,7 @@ public class HomeFeedService {
     private final PostSeenRepo postSeenRepo;
     private final AuthUtils authUtils;
     private final SocialFilterHelper socialFilterHelper;
+    private final PostDTOMapper postDTOMapper;
 
     HomeFeedService(
         FollowRepo followRepo,
@@ -36,7 +37,8 @@ public class HomeFeedService {
         UserAffinityRepo userAffinityRepo,
         HomeFeedRepo homeFeedRepo,
         PostSeenRepo postSeenRepo,
-        SocialFilterHelper socialFilterHelper
+        SocialFilterHelper socialFilterHelper,
+        PostDTOMapper postDTOMapper
     ){
         this.followRepo = followRepo;
         this.authUtils = authUtils;
@@ -44,6 +46,7 @@ public class HomeFeedService {
         this.homeFeedRepo = homeFeedRepo;
         this.postSeenRepo = postSeenRepo;
         this.socialFilterHelper = socialFilterHelper;
+        this.postDTOMapper = postDTOMapper;
     }
 
     public List<PostFetchDTO> getHomeFeed(int page) {
@@ -157,58 +160,10 @@ public class HomeFeedService {
 
         Set<Long> savedPostIds = socialFilterHelper.getSavedPostIds(user, postIds);
 
-        // 14. DTO Convert
+        // 14. DTO Convert using centralized mapper
         List<PostFetchDTO> dtoList = new ArrayList<>();
         for(PostsEntity post : uniqueFeed){
-
-            PostFetchDTO dto = new PostFetchDTO();
-
-            dto.setFetchPostId(String.valueOf(post.getPostId()));
-            dto.setFetchFileName(post.getFileName());
-            dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchPostLocation(post.getPostLocation());
-            dto.setFetchUploadAt(post.getUploadAt());
-
-            // User details
-            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
-            dto.setUsername(post.getUserpost().getUsername());
-            dto.setFullname(post.getUserpost().getFullname());
-            if(post.getUserpost().getUserData() != null){
-                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
-            }
-            dto.setFetchVerified(post.getUserpost().isVerifyTag());
-
-            // Tagged Users
-            dto.setFetchTaggedUsers(
-                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
-            );
-
-            // Stats
-            dto.setLikeCount(post.getLikeCount());
-            dto.setCommentCount(post.getCommentCount());
-            dto.setViewCount(post.getViewCount());
-            dto.setSaveCount(post.getSaveCount());
-
-            // Settings
-            dto.setCommentEnable(post.getCommentEnabled());
-            dto.setShareEnable(post.getShareEnabled());
-            dto.setLikeVisible(post.getLikeVisible());
-
-            // Posts Media Data
-            PostMedia media = post.getPostMedia();
-            if(media != null){
-                dto.setWidth(media.getWidth());
-                dto.setHeight(media.getHeight());
-                dto.setDuration(media.getDuration());
-                dto.setPostType(media.getPostType().name());
-            }
-
-            // Like/Save status
-            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
-            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
-            dto.setOwnPost(post.getUserpost().getUserId().equals(user.getUserId()));
-
-            dtoList.add(dto);
+            dtoList.add(postDTOMapper.toDTO(post, user, blockedIds, likedPostIds, savedPostIds));
         }
 
         return dtoList;

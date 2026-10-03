@@ -20,6 +20,7 @@ import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
 import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
+import com.loginapp.loginapp.Utils.PostDTOMapper;
 import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostMedia;
@@ -67,6 +68,8 @@ public class PostService {
 
     private final SocialFilterHelper socialFilterHelper;
 
+    private final PostDTOMapper postDTOMapper;
+
     PostService(
         PostRepo postRepo,
         AuthUtils authUtils,
@@ -78,7 +81,8 @@ public class PostService {
         PostCommentRepo postCommentRepo,
         SettingPreferencesRepo settingPreferencesRepo,
         UsersRepo usersRepo,
-        SocialFilterHelper socialFilterHelper
+        SocialFilterHelper socialFilterHelper,
+        PostDTOMapper postDTOMapper
     ) {
         this.postRepo = postRepo;
         this.authUtils = authUtils;
@@ -91,6 +95,7 @@ public class PostService {
         this.settingPreferencesRepo = settingPreferencesRepo;
         this.usersRepo = usersRepo;
         this.socialFilterHelper = socialFilterHelper;
+        this.postDTOMapper = postDTOMapper;
     }
 
     // ******************** POST UPLOAD ************************
@@ -107,7 +112,7 @@ public class PostService {
 
         // File validations
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File size must be less than 50MB!");
+            throw new IllegalArgumentException("File size must be less than 500MB!");
         }
 
         String contentType = file.getContentType();
@@ -270,7 +275,7 @@ public class PostService {
 
         PostFetchDTO dto = new PostFetchDTO();
 
-        // DTO Conversion
+        // Basic user info (needed for both private & public)
         dto.setUserId(String.valueOf(postOwner.getUserId()));
         dto.setUsername(postOwner.getUsername());
         dto.setFetchVerified(postOwner.isVerifyTag());
@@ -283,48 +288,15 @@ public class PostService {
             return dto;
         }
 
-        // Like & Save status
+        // Full DTO via mapper for non-private posts
+        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(user);
         boolean isLiked = socialFilterHelper.isPostLiked(user, post);
         boolean isSaved = socialFilterHelper.isPostSaved(user, post);
 
-        // Post details
-        dto.setFetchPostId(String.valueOf(post.getPostId()));
-        dto.setFetchFileName(post.getFileName());
-        dto.setFetchPostCaption(post.getPostCaption());
-        dto.setFetchPostLocation(post.getPostLocation());
-        dto.setFetchUploadAt(post.getUploadAt());
-        dto.setFullname(postOwner.getFullname());
+        Set<Long> likedSet = isLiked ? Set.of(post.getPostId()) : Collections.emptySet();
+        Set<Long> savedSet = isSaved ? Set.of(post.getPostId()) : Collections.emptySet();
 
-        // Set Tagged Users
-        Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(user);
-        dto.setFetchTaggedUsers(
-            socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
-        );
-
-        // Stats
-        dto.setLikeCount(post.getLikeCount());
-        dto.setCommentCount(post.getCommentCount());
-        dto.setViewCount(post.getViewCount());
-        dto.setSaveCount(post.getSaveCount());
-
-        // Settings
-        dto.setCommentEnable(post.getCommentEnabled());
-        dto.setShareEnable(post.getShareEnabled());
-        dto.setLikeVisible(post.getLikeVisible());
-        dto.setOwnPost(post.getUserpost().getUserId().equals(user.getUserId()));
-
-        // Media
-        PostMedia media = post.getPostMedia();
-        if (media != null) {
-            dto.setWidth(media.getWidth());
-            dto.setHeight(media.getHeight());
-            dto.setDuration(media.getDuration());
-            dto.setPostType(media.getPostType().name());
-        }
-
-        // Like/Save status
-        dto.setLikedByCurrentUser(isLiked);
-        dto.setSavedByCurrentUser(isSaved);
+        dto = postDTOMapper.toDTO(post, user, blockedIds, likedSet, savedSet);
 
         return dto;
     }

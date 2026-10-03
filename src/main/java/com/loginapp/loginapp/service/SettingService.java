@@ -22,13 +22,13 @@ import com.loginapp.loginapp.Utils.AuthUtils;
 import com.loginapp.loginapp.Utils.CloudinaryService;
 import com.loginapp.loginapp.Utils.DefaultSetting;
 import com.loginapp.loginapp.Utils.PasswordHashing;
+import com.loginapp.loginapp.Utils.PostDTOMapper;
 import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.entity.UserData;
 import com.loginapp.loginapp.entity.AccountDeactivation;
 import com.loginapp.loginapp.entity.FollowRequestTable;
 import com.loginapp.loginapp.entity.FollowUser;
-import com.loginapp.loginapp.entity.PostMedia;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.SettingPreferences;
 import com.loginapp.loginapp.repository.UsersRepo;
@@ -76,6 +76,8 @@ public class SettingService {
 
     private final SocialFilterHelper socialFilterHelper;
 
+    private final PostDTOMapper postDTOMapper;
+
     // Username regex (only lowercase letters, numbers, underscore)
     private static final String USERNAME_REGEX = "^[a-z0-9_.]+$";
     private static final Pattern USERNAME_PATTERN = Pattern.compile(USERNAME_REGEX);
@@ -88,7 +90,7 @@ public class SettingService {
     private static final String MOBILE_REGEX = "^\\+?[0-9]{7,15}$";
     private static final Pattern MOBILE_PATTERN = Pattern.compile(MOBILE_REGEX);
 
-    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting, UserSessionRepo userSessionRepo, SocialFilterHelper socialFilterHelper) {
+    SettingService(AuthUtils authUtils, UsersRepo usersRepo, CloudinaryService cloudinaryService, FollowRequestRepo followRequestRepo, FollowRepo followRepo, PasswordHashing passwordHashing, BlockRepo blockRepo, AccountDeactivationRepo accountDeactivationRepo, SavedPostRepo savedPostRepo, PostRepo postRepo, SettingPreferencesRepo settingPreferencesRepo, DefaultSetting defaultSetting, UserSessionRepo userSessionRepo, SocialFilterHelper socialFilterHelper, PostDTOMapper postDTOMapper) {
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
         this.cloudinaryService = cloudinaryService;
@@ -103,6 +105,7 @@ public class SettingService {
         this.defaultSetting = defaultSetting;
         this.userSessionRepo = userSessionRepo;
         this.socialFilterHelper = socialFilterHelper;
+        this.postDTOMapper = postDTOMapper;
     }
 
 
@@ -729,54 +732,7 @@ public class SettingService {
                 continue;
             }
 
-            PostFetchDTO dto = new PostFetchDTO();
-
-            dto.setFetchPostId(String.valueOf(post.getPostId()));
-            dto.setFetchFileName(post.getFileName());
-            dto.setFetchPostCaption(post.getPostCaption());
-            dto.setFetchPostLocation(post.getPostLocation());
-            dto.setFetchUploadAt(post.getUploadAt());
-
-            // User details
-            dto.setUserId(String.valueOf(post.getUserpost().getUserId()));
-            dto.setUsername(post.getUserpost().getUsername());
-            dto.setFullname(post.getUserpost().getFullname());
-            if(post.getUserpost().getUserData() != null){
-                dto.setProfileImage(post.getUserpost().getUserData().getProfilePhoto());
-            }
-            dto.setFetchVerified(post.getUserpost().isVerifyTag());
-
-            // Tagged Users
-            dto.setFetchTaggedUsers(
-                socialFilterHelper.resolveTaggedUsers(post.getTaggedUsers(), blockedIds)
-            );
-
-            // Stats
-            dto.setLikeCount(post.getLikeCount());
-            dto.setCommentCount(post.getCommentCount());
-            dto.setViewCount(post.getViewCount());
-            dto.setSaveCount(post.getSaveCount());
-
-            // Settings
-            dto.setCommentEnable(post.getCommentEnabled());
-            dto.setShareEnable(post.getShareEnabled());
-            dto.setLikeVisible(post.getLikeVisible());
-
-            // Posts Media Data
-            PostMedia media = post.getPostMedia();
-            if(media != null){
-                dto.setWidth(media.getWidth());
-                dto.setHeight(media.getHeight());
-                dto.setDuration(media.getDuration());
-                dto.setPostType(media.getPostType().name());
-            }
-
-            // Like/Save status
-            dto.setLikedByCurrentUser(likedPostIds.contains(post.getPostId()));
-            dto.setSavedByCurrentUser(savedPostIds.contains(post.getPostId()));
-            dto.setOwnPost(post.getUserpost().getUserId().equals(user.getUserId()));
-
-            postFetchDTOList.add(dto);
+            postFetchDTOList.add(postDTOMapper.toDTO(post, user, blockedIds, likedPostIds, savedPostIds));
         }
 
         return postFetchDTOList;
