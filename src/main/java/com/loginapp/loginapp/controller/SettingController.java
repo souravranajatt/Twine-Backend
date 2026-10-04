@@ -18,6 +18,7 @@ import com.loginapp.loginapp.DTO.SettingDataDTO;
 import com.loginapp.loginapp.DTO.SettingIntreactionDTO;
 import com.loginapp.loginapp.DTO.UserSessionResponseDTO;
 import com.loginapp.loginapp.DTO.VisibilityUpdateDTO;
+import com.loginapp.loginapp.annotation.RateLimit;
 import com.loginapp.loginapp.service.SettingService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -238,6 +239,7 @@ public class SettingController {
 
     // Password Change End Point
     @PutMapping("/security/password-change")
+    @RateLimit(key = "AUTH_PASSWORD_CHANGE", maxRequests = 5, windowSeconds = 60, message = "Too many password change attempts. Please wait a minute.")
     public ResponseEntity<?> changePasswordSetting(@RequestBody ChangePasswordRequestDTO changePasswordRequestDTO){
         try{
             String result = settingService.changePasswordService(changePasswordRequestDTO);

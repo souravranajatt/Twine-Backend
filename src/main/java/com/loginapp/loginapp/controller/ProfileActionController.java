@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.loginapp.loginapp.annotation.RateLimit;
 import com.loginapp.loginapp.service.ProfileActionService;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,6 +27,7 @@ public class ProfileActionController {
 
     // Follow Endpoint
     @PostMapping("/{targetUserId}/follow")
+    @RateLimit(key = "USER_FOLLOW", maxRequests = 20, windowSeconds = 60, message = "You're following too fast! Please wait a moment.")
     public ResponseEntity<?> followButtonAction(@PathVariable Long targetUserId){
         try {
             profileActionService.followUser(targetUserId);
@@ -91,6 +93,7 @@ public class ProfileActionController {
 
     // Block User Endpoint
     @PostMapping("/{targetUserId}/block")
+    @RateLimit(key = "USER_BLOCK", maxRequests = 20, windowSeconds = 60, message = "Too many block requests. Please wait a moment.")
     public ResponseEntity<?> blockUserAction(@PathVariable Long targetUserId) {
         try {
             String result = profileActionService.blockUserAction(targetUserId);
@@ -117,6 +120,7 @@ public class ProfileActionController {
 
     // Send Secret Crush Request Endpoint
     @PostMapping("/{targetUserId}/crush")
+    @RateLimit(key = "USER_CRUSH", maxRequests = 10, windowSeconds = 60, message = "Too many secret crush requests. Please wait a moment.")
     public ResponseEntity<?> sendSecretCrushRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.sendAnonymousLike(targetUserId);

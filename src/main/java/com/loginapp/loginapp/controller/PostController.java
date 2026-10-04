@@ -12,6 +12,7 @@ import com.loginapp.loginapp.DTO.PostCommentFetchDTO;
 import com.loginapp.loginapp.DTO.PostFetchDTO;
 import com.loginapp.loginapp.DTO.PostUploadRequest;
 import com.loginapp.loginapp.DTO.PostUploadResponse;
+import com.loginapp.loginapp.annotation.RateLimit;
 import com.loginapp.loginapp.service.PostService;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,7 @@ public class PostController {
 
     // Upload Post 
     @PostMapping("/upload")
+    @RateLimit(key = "POST_UPLOAD", maxRequests = 5, windowSeconds = 60, message = "Upload limit reached! You can upload up to 5 posts per minute.")
     public ResponseEntity<PostUploadResponse> postUploadLive(@ModelAttribute PostUploadRequest postUploadRequest) {
         try{
             PostUploadResponse finalRes = postService.uploadPost(postUploadRequest);

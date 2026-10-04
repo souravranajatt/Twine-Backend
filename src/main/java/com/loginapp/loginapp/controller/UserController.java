@@ -17,6 +17,7 @@ import com.loginapp.loginapp.DTO.OtpRequestDto;
 import com.loginapp.loginapp.DTO.SignupRequest;
 import com.loginapp.loginapp.DTO.SignupResponse;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.annotation.RateLimit;
 import com.loginapp.loginapp.service.AuthRedisService;
 import com.loginapp.loginapp.service.UserService;
 
@@ -72,6 +73,7 @@ public class UserController {
 
     // Step 1: Validate full form input and send OTP to email
     @PostMapping("/send-otp")
+    @RateLimit(key = "AUTH_SEND_OTP", maxRequests = 5, windowSeconds = 60, message = "Too many OTP requests! Please wait 1 minute before requesting again.")
     public ResponseEntity<SignupResponse> sendOtp(@RequestBody SignupRequest signupRequest) {
         try {
             userService.sendOtp(signupRequest);
@@ -89,6 +91,7 @@ public class UserController {
 
     // Step 2: Verify the OTP 
     @PostMapping("/verify-otp")
+    @RateLimit(key = "AUTH_VERIFY_OTP", maxRequests = 10, windowSeconds = 60, message = "Too many OTP verification attempts! Please wait 1 minute.")
     public ResponseEntity<SignupResponse> verifyOtp(@RequestBody OtpRequestDto otpRequestDto) {
         try {
             userService.verifyOtp(otpRequestDto);
@@ -106,6 +109,7 @@ public class UserController {
 
     // Login endpoint
     @PostMapping("/login")
+    @RateLimit(key = "AUTH_LOGIN", maxRequests = 10, windowSeconds = 60, message = "Too many login attempts! Please wait a moment before trying again.")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest,
                                                HttpServletRequest request,
                                                HttpServletResponse response) {

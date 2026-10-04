@@ -9,6 +9,7 @@ import java.util.List;
 
 import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.DTO.UserSearchDTO;
+import com.loginapp.loginapp.annotation.RateLimit;
 import com.loginapp.loginapp.service.SearchService;
 
 @RestController
@@ -23,6 +24,7 @@ public class SearchController {
 
     // User Search Endpoint
     @GetMapping("/users")
+    @RateLimit(key = "SEARCH_USERS", maxRequests = 40, windowSeconds = 60, message = "Too many search requests. Please slow down.")
     public ResponseEntity<List<UserSearchDTO>> searchUsers(@RequestParam String query) {
         try {
             List<UserSearchDTO> results = searchService.searchUsers(query);
@@ -37,6 +39,7 @@ public class SearchController {
 
     // User Search for Tagging Endpoint
     @GetMapping("/tagging")
+    @RateLimit(key = "SEARCH_TAGGING", maxRequests = 40, windowSeconds = 60, message = "Too many search requests. Please slow down.")
     public ResponseEntity<List<TaggingResult>> searchUsersForTagging(@RequestParam String query) {
         try {
             List<TaggingResult> results = searchService.searchUsersForTagging(query);

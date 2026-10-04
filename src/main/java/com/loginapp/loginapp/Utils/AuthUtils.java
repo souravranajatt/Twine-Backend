@@ -54,4 +54,19 @@ public class AuthUtils {
         }
         return null;
     }
+
+    // Get Logged-in User ID without throwing exception (returns null if unauthenticated/anonymous)
+    public Long getLoggedUserIdOptional() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null 
+                || !authentication.isAuthenticated() 
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
+        }
+        try {
+            return Long.parseLong(authentication.getName());
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

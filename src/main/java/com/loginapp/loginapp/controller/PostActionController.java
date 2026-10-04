@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.loginapp.loginapp.DTO.PostCommentDTO;
+import com.loginapp.loginapp.annotation.RateLimit;
 import com.loginapp.loginapp.service.PostActionService;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -30,6 +31,7 @@ public class PostActionController {
 
     // Like a Post
     @PostMapping("/{postId}/like")
+    @RateLimit(key = "POST_LIKE", maxRequests = 30, windowSeconds = 60, message = "You're liking too fast! Please slow down.")
     public ResponseEntity<?> likePost(@PathVariable Long postId) { 
         try{
             postActionService.likePost(postId);
@@ -56,6 +58,7 @@ public class PostActionController {
     
      // Save a Post
     @PostMapping("/{postId}/save")
+    @RateLimit(key = "POST_SAVE", maxRequests = 20, windowSeconds = 60, message = "You're saving posts too fast! Please slow down.")
     public ResponseEntity<?> savePost(@PathVariable Long postId) { 
         try{
             postActionService.savePost(postId);
@@ -95,6 +98,7 @@ public class PostActionController {
 
     // Post a comment 
     @PostMapping("/{postId}/comment")
+    @RateLimit(key = "POST_COMMENT", maxRequests = 15, windowSeconds = 60, message = "You're commenting too fast! Please wait a moment.")
     public ResponseEntity<?> commentPost(@PathVariable Long postId, @RequestBody PostCommentDTO postCommentDTO) {
         try{
             postActionService.commentPost(postId, postCommentDTO);
