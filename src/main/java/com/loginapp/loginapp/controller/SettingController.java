@@ -55,6 +55,7 @@ public class SettingController {
 
     // Logged User Profile Update End Point
     @PutMapping("/account/profile-update")
+    @RateLimit(key = "SETTING_PROFILE_UPDATE", maxRequests = 10, windowSeconds = 60, message = "Too many profile updates! Please slow down.")
     public ResponseEntity<?> profileDataUpdateSetting(@RequestBody SettingDataDTO updateDataDTO){
         try{
             String result = settingService.settingProfileDataUpdate(updateDataDTO);
@@ -68,6 +69,7 @@ public class SettingController {
 
     // Account Deactivation End Point
     @PatchMapping("/account/deactivate")
+    @RateLimit(key = "AUTH_DEACTIVATE", maxRequests = 5, windowSeconds = 60, message = "Too many deactivation attempts! Please wait.")
     public ResponseEntity<?> accountDeactivationSetting(@RequestBody DeactivateRequestDTO deactivateRequestDTO){
         try{
             String result = settingService.deactivateAccount(deactivateRequestDTO);
@@ -95,6 +97,7 @@ public class SettingController {
 
     // Personal Details Update End Point
     @PutMapping("/account/personal-details-update")
+    @RateLimit(key = "SETTING_PERSONAL_UPDATE", maxRequests = 10, windowSeconds = 60, message = "Too many detail updates! Please slow down.")
     public ResponseEntity<?> updatePersonalDetails(@RequestBody PersonalDetailsDTO personalDetailsDTO) {
         try{
             String result = settingService.personalDetailsUpdate(personalDetailsDTO);

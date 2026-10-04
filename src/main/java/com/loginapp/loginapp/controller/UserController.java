@@ -45,6 +45,7 @@ public class UserController {
 
     // Complete Registration
     @PostMapping("/signup")
+    @RateLimit(key = "AUTH_SIGNUP", maxRequests = 5, windowSeconds = 60, message = "Too many registration attempts! Please wait 1 minute.")
     public ResponseEntity<SignupResponse> signup(@RequestBody SignupRequest signupRequest,
                                                  HttpServletRequest request,
                                                  HttpServletResponse response) {

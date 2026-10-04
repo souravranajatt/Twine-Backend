@@ -204,6 +204,7 @@ public class PostActionController {
 
     // Delete a post 
     @DeleteMapping("/{postId}")
+    @RateLimit(key = "POST_DELETE", maxRequests = 10, windowSeconds = 60, message = "Too many post deletions. Please slow down.")
     public ResponseEntity<?> deletePost(@PathVariable Long postId) {
         try {
             postActionService.deletePost(postId);
