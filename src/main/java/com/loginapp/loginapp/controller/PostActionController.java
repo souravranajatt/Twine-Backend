@@ -45,6 +45,7 @@ public class PostActionController {
     
     // Unlike a Post
     @DeleteMapping("/{postId}/unlike")
+    @RateLimit(key = "POST_LIKE", maxRequests = 30, windowSeconds = 60, message = "You're unliking too fast! Please slow down.")
     public ResponseEntity<?> unlikePost(@PathVariable Long postId) {
         try{
             postActionService.unlikePost(postId);
@@ -72,6 +73,7 @@ public class PostActionController {
     
     //  Unsave a Post
     @DeleteMapping("/{postId}/unsave")
+    @RateLimit(key = "POST_SAVE", maxRequests = 20, windowSeconds = 60, message = "You're unsaving posts too fast! Please slow down.")
     public ResponseEntity<?> unsavePost(@PathVariable Long postId) { 
         try{
             postActionService.unsavePost(postId);
@@ -85,6 +87,7 @@ public class PostActionController {
 
     // View a Post
     @PostMapping("/{postId}/view")
+    @RateLimit(key = "POST_VIEW", maxRequests = 60, windowSeconds = 60, message = "Too many view requests. Please slow down.")
     public ResponseEntity<?> viewPost(@PathVariable Long postId){
         try{
             postActionService.viewPost(postId);

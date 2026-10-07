@@ -41,6 +41,7 @@ public class ProfileActionController {
 
     // Unfollow
     @DeleteMapping("/{targetUserId}/unfollow")
+    @RateLimit(key = "USER_FOLLOW", maxRequests = 20, windowSeconds = 60, message = "You're unfollowing too fast! Please wait a moment.")
     public ResponseEntity<?> unfollowUser(@PathVariable Long targetUserId) {
         try {
             profileActionService.unfollowUser(targetUserId);
@@ -54,6 +55,7 @@ public class ProfileActionController {
 
     // Cancel Request
     @DeleteMapping("/{targetUserId}/follow/cancel")
+    @RateLimit(key = "USER_FOLLOW", maxRequests = 20, windowSeconds = 60, message = "Too many follow actions! Please wait a moment.")
     public ResponseEntity<?> cancelFollowRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.cancelFollowRequest(targetUserId);
@@ -67,6 +69,7 @@ public class ProfileActionController {
 
     // Accept Request
     @PostMapping("/{targetUserId}/follow/accept")
+    @RateLimit(key = "USER_FOLLOW", maxRequests = 20, windowSeconds = 60, message = "Too many follow actions! Please wait a moment.")
     public ResponseEntity<?> acceptFollowRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.acceptFollowRequest(targetUserId);
@@ -80,6 +83,7 @@ public class ProfileActionController {
 
     // Reject Request
     @DeleteMapping("/{targetUserId}/follow/reject")
+    @RateLimit(key = "USER_FOLLOW", maxRequests = 20, windowSeconds = 60, message = "Too many follow actions! Please wait a moment.")
     public ResponseEntity<?> rejectFollowRequest(@PathVariable Long targetUserId) {
         try {
             profileActionService.rejectFollowRequest(targetUserId);
@@ -107,6 +111,7 @@ public class ProfileActionController {
 
     // Unblock User Endpoint
     @DeleteMapping("/{targetUserId}/unblock")
+    @RateLimit(key = "USER_BLOCK", maxRequests = 20, windowSeconds = 60, message = "Too many unblock requests. Please wait a moment.")
     public ResponseEntity<?> unblockUserAction(@PathVariable Long targetUserId) {
         try {
             String result = profileActionService.unblockUserAction(targetUserId);
