@@ -38,4 +38,13 @@ public interface PostCommentRepo extends JpaRepository<PostComment, Long> {
             WHERE pc.post = :post
             """)
     void deleteForSpecificPost(@Param("post") PostsEntity post);
+
+    // Atomic Reply Count Queries (Prevents Race Conditions)
+    @Modifying
+    @Query("UPDATE PostComment c SET c.replyCount = c.replyCount + 1 WHERE c.commentId = :commentId")
+    void incrementReplyCount(@Param("commentId") Long commentId);
+
+    @Modifying
+    @Query("UPDATE PostComment c SET c.replyCount = CASE WHEN c.replyCount > 0 THEN c.replyCount - 1 ELSE 0 END WHERE c.commentId = :commentId")
+    void decrementReplyCount(@Param("commentId") Long commentId);
 }

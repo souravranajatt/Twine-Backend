@@ -2,6 +2,7 @@ package com.loginapp.loginapp.repository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import com.loginapp.loginapp.entity.Users;
@@ -93,4 +94,33 @@ public interface PostRepo extends JpaRepository<PostsEntity, Long> {
                 AND p.postVisiblity = false
                         """)
         PostsEntity findArchivedPostById(@Param("postId") Long postId, @Param("user") Users user);
+
+        // Atomic Counter Queries (Prevents Race Conditions)
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.likeCount = p.likeCount + 1 WHERE p.postId = :postId")
+        void incrementLikeCount(@Param("postId") Long postId);
+
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.likeCount = CASE WHEN p.likeCount > 0 THEN p.likeCount - 1 ELSE 0 END WHERE p.postId = :postId")
+        void decrementLikeCount(@Param("postId") Long postId);
+
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.saveCount = p.saveCount + 1 WHERE p.postId = :postId")
+        void incrementSaveCount(@Param("postId") Long postId);
+
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.saveCount = CASE WHEN p.saveCount > 0 THEN p.saveCount - 1 ELSE 0 END WHERE p.postId = :postId")
+        void decrementSaveCount(@Param("postId") Long postId);
+
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.viewCount = p.viewCount + 1 WHERE p.postId = :postId")
+        void incrementViewCount(@Param("postId") Long postId);
+
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.commentCount = p.commentCount + 1 WHERE p.postId = :postId")
+        void incrementCommentCount(@Param("postId") Long postId);
+
+        @Modifying
+        @Query("UPDATE PostsEntity p SET p.commentCount = CASE WHEN p.commentCount > 0 THEN p.commentCount - 1 ELSE 0 END WHERE p.postId = :postId")
+        void decrementCommentCount(@Param("postId") Long postId);
 }

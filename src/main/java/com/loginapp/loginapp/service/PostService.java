@@ -305,10 +305,7 @@ public class PostService {
     public List<PostCommentFetchDTO> fetchComment(Long postId, int page) {
         Users loggedUser = authUtils.getLoggedUser();
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         // Get blocked user IDs (both directions)
         Set<Long> blockedIds = socialFilterHelper.getAllBlockedUserIds(loggedUser);

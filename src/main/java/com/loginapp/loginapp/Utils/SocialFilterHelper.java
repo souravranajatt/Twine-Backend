@@ -8,8 +8,10 @@ import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
 import com.loginapp.loginapp.repository.PostLikeRepo;
+import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
 import com.loginapp.loginapp.repository.UsersRepo;
+import org.springframework.security.access.AccessDeniedException;
 
 @Component
 public class SocialFilterHelper {
@@ -18,12 +20,14 @@ public class SocialFilterHelper {
     private final PostLikeRepo postLikeRepo;
     private final SavedPostRepo savedPostRepo;
     private final UsersRepo usersRepo;
+    private final PostRepo postRepo;
 
-    public SocialFilterHelper(BlockRepo blockRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, UsersRepo usersRepo) {
+    public SocialFilterHelper(BlockRepo blockRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, UsersRepo usersRepo, PostRepo postRepo) {
         this.blockRepo = blockRepo;
         this.postLikeRepo = postLikeRepo;
         this.savedPostRepo = savedPostRepo;
         this.usersRepo = usersRepo;
+        this.postRepo = postRepo;
     }
 
     // Fetch all blocked user IDs (both sides: blocked by me + blocked me) in a single DB query
@@ -103,5 +107,26 @@ public class SocialFilterHelper {
             results.add(dto);
         }
         return results;
+    }
+
+    // Fetch active post or throw exception
+    public PostsEntity getActivePostOrThrow(Long postId) {
+        if (postId == null) {
+            throw new IllegalArgumentException("Invalid post ID!");
+        }
+        PostsEntity post = postRepo.findActivePost(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post no longer available!");
+        }
+        return post;
+    }
+
+    // Fetch active post and verify that logged user is the owner
+    public PostsEntity getOwnedPostOrThrow(Long postId, Users user) {
+        PostsEntity post = getActivePostOrThrow(postId);
+        if (user == null || post.getUserpost() == null || !post.getUserpost().getUserId().equals(user.getUserId())) {
+            throw new AccessDeniedException("Invalid Actions");
+        }
+        return post;
     }
 }

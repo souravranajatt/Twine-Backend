@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 import com.loginapp.loginapp.DTO.PostCommentDTO;
 import com.loginapp.loginapp.Utils.AuthUtils;
+import com.loginapp.loginapp.Utils.SocialFilterHelper;
 import com.loginapp.loginapp.entity.PostComment;
 import com.loginapp.loginapp.entity.PostLike;
 import com.loginapp.loginapp.entity.PostSeen;
@@ -33,8 +34,14 @@ public class PostActionService {
     private final PostLikeRepo postLikeRepo;
     private final SavedPostRepo savedPostRepo;
     private final PostSeenRepo postSeenRepo;
+    private final SocialFilterHelper socialFilterHelper;
 
-    PostActionService(AuthUtils authUtils, AffinityService affinityService, PostRepo postRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, PostSeenRepo postSeenRepo, PostCommentRepo postCommentRepo) {
+    private static final ZoneId ZONE_KOLKATA = ZoneId.of("Asia/Kolkata");
+
+    PostActionService(AuthUtils authUtils, AffinityService affinityService, PostRepo postRepo,
+                      PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo,
+                      PostSeenRepo postSeenRepo, PostCommentRepo postCommentRepo,
+                      SocialFilterHelper socialFilterHelper) {
         this.authUtils = authUtils;
         this.affinityService = affinityService;
         this.postRepo = postRepo;
@@ -42,16 +49,13 @@ public class PostActionService {
         this.savedPostRepo = savedPostRepo;
         this.postSeenRepo = postSeenRepo;
         this.postCommentRepo = postCommentRepo;
+        this.socialFilterHelper = socialFilterHelper;
     }
 
     // Like a Post
     public void likePost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         boolean alreadyLiked = postLikeRepo.existsByPostAndUser(post, loggedUser);
         if (alreadyLiked) {
@@ -63,8 +67,7 @@ public class PostActionService {
         postLike.setUser(loggedUser);
         postLikeRepo.save(postLike);
 
-        post.setLikeCount(post.getLikeCount() + 1);
-        postRepo.save(post);
+        postRepo.incrementLikeCount(postId);
 
         affinityService.updateAffinityOnLike(loggedUser, post);
     }
@@ -72,18 +75,14 @@ public class PostActionService {
     // Unlike a Post
     public void unlikePost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         Optional<PostLike> postLikeOptional = postLikeRepo.findByPostAndUser(post, loggedUser);
         if (postLikeOptional.isPresent()) {
             PostLike postLike = postLikeOptional.get();
             postLikeRepo.delete(postLike);
-            post.setLikeCount(post.getLikeCount() - 1);
-            postRepo.save(post);
+
+            postRepo.decrementLikeCount(postId);
 
             affinityService.updateAffinityOnUnlike(loggedUser, post);
         } else {
@@ -94,11 +93,7 @@ public class PostActionService {
     // Save a Post
     public void savePost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         boolean alreadySaved = savedPostRepo.existsByUserAndPost(loggedUser, post);
         if (alreadySaved) {
@@ -110,8 +105,7 @@ public class PostActionService {
         savedPost.setPost(post);
         savedPostRepo.save(savedPost);
 
-        post.setSaveCount(post.getSaveCount() + 1);
-        postRepo.save(post);
+        postRepo.incrementSaveCount(postId);
 
         affinityService.updateAffinityOnSave(loggedUser, post);
     }
@@ -119,19 +113,14 @@ public class PostActionService {
     // Unsave a Post
     public void unsavePost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         Optional<SavedPosts> savedPostOptional = savedPostRepo.findByUserAndPost(loggedUser, post);
         if (savedPostOptional.isPresent()) {
             SavedPosts savedPost = savedPostOptional.get();
             savedPostRepo.delete(savedPost);
 
-            post.setSaveCount(post.getSaveCount() - 1);
-            postRepo.save(post);
+            postRepo.decrementSaveCount(postId);
 
             affinityService.updateAffinityOnUnsave(loggedUser, post);
         } else {
@@ -142,107 +131,88 @@ public class PostActionService {
     // View a Post 
     public void viewPost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         PostSeen existingSeen = postSeenRepo.findByPostAndUser(post, loggedUser);
+        LocalDateTime now = LocalDateTime.now(ZONE_KOLKATA);
 
         if (existingSeen != null) {
-            LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-            LocalDateTime lastViewed = existingSeen.getLastViewedAt();
-
-            boolean tenMinutesPassed = lastViewed.plusMinutes(10).isBefore(now);
-
-            if (tenMinutesPassed) {
-                existingSeen.setViewCount(existingSeen.getViewCount() + 1);
-                existingSeen.setLastViewedAt(now);
-                postSeenRepo.save(existingSeen);
-
-                post.setViewCount(post.getViewCount() + 1);
-                postRepo.save(post);
-
-                affinityService.updateAffinityOnView(loggedUser, post);
-            } else {
+            boolean tenMinutesPassed = existingSeen.getLastViewedAt().plusMinutes(10).isBefore(now);
+            if (!tenMinutesPassed) {
                 return;
             }
+            existingSeen.setViewCount(existingSeen.getViewCount() + 1);
+            existingSeen.setLastViewedAt(now);
+            postSeenRepo.save(existingSeen);
         } else {
             PostSeen postSeen = new PostSeen();
             postSeen.setPost(post);
             postSeen.setUser(loggedUser);
             postSeenRepo.save(postSeen);
-
-            post.setViewCount(post.getViewCount() + 1);
-            postRepo.save(post);
-
-            affinityService.updateAffinityOnView(loggedUser, post);
         }
+
+        postRepo.incrementViewCount(postId);
+        affinityService.updateAffinityOnView(loggedUser, post);
     }
 
     // Comment a Post 
     public void commentPost(Long postId, PostCommentDTO commentDTO) {
-        
         Users loggedUser = authUtils.getLoggedUser();
-
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
 
         if (!post.getCommentEnabled()) {
             throw new AccessDeniedException("Invalid Actions!");
         }
 
-        if(commentDTO.getCommentText().length() > 2200){
-            throw new IllegalArgumentException("Caption size can't exceed!");
+        if (commentDTO == null || commentDTO.getCommentText() == null || commentDTO.getCommentText().isBlank()) {
+            throw new IllegalArgumentException("Comment cannot be empty!");
+        }
+
+        if (commentDTO.getCommentText().length() > 2200) {
+            throw new IllegalArgumentException("Comment cannot exceed 2200 characters!");
         }
 
         PostComment newComment = new PostComment();
-        newComment.setCommentText(commentDTO.getCommentText());
+        newComment.setCommentText(commentDTO.getCommentText().trim());
         newComment.setPost(post);
         newComment.setUser(loggedUser);
 
         if (commentDTO.getParentId() != null && !commentDTO.getParentId().trim().isEmpty()) {
-            Long parentid = Long.parseLong(commentDTO.getParentId());
-            PostComment parentComment = postCommentRepo.findById(parentid)
-                .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
-            newComment.setParentId(parentComment);
+            try {
+                Long parentid = Long.parseLong(commentDTO.getParentId().trim());
+                PostComment parentComment = postCommentRepo.findById(parentid)
+                    .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
 
-            parentComment.setReplyCount(parentComment.getReplyCount() + 1);
-            postCommentRepo.save(parentComment);
+                // Verify parent comment belongs to the same post
+                if (!parentComment.getPost().getPostId().equals(post.getPostId())) {
+                    throw new IllegalArgumentException("Invalid parent comment!");
+                }
+
+                newComment.setParentId(parentComment);
+                postCommentRepo.incrementReplyCount(parentid);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid parent comment ID!");
+            }
         }
 
-
         postCommentRepo.save(newComment);
+        postRepo.incrementCommentCount(postId);
 
-        post.setCommentCount(post.getCommentCount() + 1);
-        postRepo.save(post);
+        // Update user affinity score for comment!
+        affinityService.updateAffinityOnComment(loggedUser, post);
     } 
 
     // Archive a post
     public void archivePost(Long postId){
-
         Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if (!post.getUserpost().getUserId().equals(loggedUser.getUserId())) {
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        if(!post.getPostVisiblity()){
+        if (!post.getPostVisiblity()) {
             throw new IllegalArgumentException("Post already archived!");
         }
 
-        // Archive post 
         post.setPostVisiblity(false);
         postRepo.save(post);
-
     }
 
     // Unarchive a post
@@ -254,15 +224,10 @@ public class PostActionService {
             throw new IllegalArgumentException("Post no longer available!");
         }
 
-        if (!post.getUserpost().getUserId().equals(loggedUser.getUserId())) {
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        if(post.getPostVisiblity()){
+        if (post.getPostVisiblity()) {
             throw new IllegalArgumentException("Post already unarchived!");
         }
 
-        // Unarchive post 
         post.setPostVisiblity(true);
         postRepo.save(post);
     }
@@ -270,119 +235,67 @@ public class PostActionService {
     // Hide Likes on a post
     public void hideLikes(Long postId){
         Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        if(!post.getLikeVisible()){
+        if (!post.getLikeVisible()) {
             throw new IllegalArgumentException("Likes already hidden!");
         }
 
-        // Hide Likes 
         post.setLikeVisible(false);
         postRepo.save(post);
-
     } 
 
     // Show Likes on a post
     public void showLikes(Long postId){
         Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        if(post.getLikeVisible()){
+        if (post.getLikeVisible()) {
             throw new IllegalArgumentException("Likes already shown!");
         }
 
-        // Hide Likes 
         post.setLikeVisible(true);
         postRepo.save(post);
-
     } 
 
     // Disable comments on a post
     public void disableComments(Long postId){
         Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        if(!post.getCommentEnabled()){
+        if (!post.getCommentEnabled()) {
             throw new IllegalArgumentException("Comments already disabled!");
         }
 
-        // Disable Comments
         post.setCommentEnabled(false);
         postRepo.save(post);
-
     } 
 
     // Enable comments on a post
     public void enableComments(Long postId){
         Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        if(post.getCommentEnabled()){
+        if (post.getCommentEnabled()) {
             throw new IllegalArgumentException("Comments already enabled!");
         }
 
-        // Enable Comments 
         post.setCommentEnabled(true);
         postRepo.save(post);
-
     }
 
     // Delete a Post
     public String deletePost(Long postId){
         Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
 
-        PostsEntity post = postRepo.findActivePost(postId);
-        if (post == null) {
-            throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if(!post.getUserpost().getUserId().equals(loggedUser.getUserId())){
-            throw new AccessDeniedException("Invalid Actions");
-        }
-
-        // Delete post comment, save, and like data 
         postCommentRepo.deleteForSpecificPost(post);
         savedPostRepo.deleteForSpecificPost(post);
         postLikeRepo.deleteForSpecificPost(post);
         postSeenRepo.deleteForSpecificPost(post);
 
-        // Delete Post
         postRepo.delete(post);
-
         return "Post Deleted!";
-
     }
 
 }
