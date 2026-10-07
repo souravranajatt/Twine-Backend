@@ -60,6 +60,7 @@ public class UserService {
 
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final String OTP_KEY_PREFIX = "SIGNUP_OTP_";
+    private static final ZoneId ZONE_KOLKATA = ZoneId.of("Asia/Kolkata");
 
     UserService(UsersRepo usersRepo, JwtUtils jwtUtils, PasswordHashing passwordHashing,
                 AccountSuspendRepo accountSuspendRepo, RedisService redisService,
@@ -393,7 +394,7 @@ public class UserService {
     public LoginResponse loginUser(LoginRequest loginRequest, HttpServletRequest request) {
 
         // Null and Empty Checks
-        if (loginRequest.getUsername() == null || loginRequest.getUsername().trim().isEmpty()) {
+        if (loginRequest.getUsername() == null || loginRequest.getUsername().isBlank()) {
             throw new IllegalArgumentException("Username or email is required!");
         }
         if (loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
@@ -404,54 +405,16 @@ public class UserService {
         }
 
         String identifier = loginRequest.getUsername().trim().toLowerCase();
-        Optional<Users> userOpt;
-
-        if (identifier.contains("@")) {
-            userOpt = usersRepo.findByEmail(identifier);
-        } else {
-            userOpt = usersRepo.findByUsername(identifier);
-        }
-
-        Users user = userOpt.orElseThrow(() -> 
-            new IllegalArgumentException("Invalid username or password!"));
+        Users user = (identifier.contains("@") ? usersRepo.findByEmail(identifier) : usersRepo.findByUsername(identifier))
+                .orElseThrow(() -> new IllegalArgumentException("Invalid username or password!"));
 
         // Verify password
         if (!passwordHashing.verifyPassword(loginRequest.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid username or password!");
         }
 
-        // Suspended check
-        if (user.isStatusSuspend()) {
-
-            AccountSuspend suspension = accountSuspendRepo
-                .findTopByUserAndIsValidOrderBySuspendedAtDesc(user, true);
-
-            LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-
-            if (suspension == null) {
-                user.setStatusSuspend(false);
-                usersRepo.save(user);
-
-            } else if (suspension.getSuspendedUntil().isBefore(now)) {
-                suspension.setValid(false);
-                accountSuspendRepo.save(suspension);
-
-                user.setStatusSuspend(false);
-                usersRepo.save(user);
-
-            } else {
-                throw new IllegalArgumentException(
-                    "Your account is suspended until " + suspension.getSuspendedUntil()
-                    + ". Reason: " + suspension.getReason()
-                );
-            }
-        }
-
-        // Auto-reactivate account if it was deactivated
-        if (user.isStatusDeleted()) {
-            user.setStatusDeleted(false);
-            usersRepo.save(user);
-        }
+        // Handle suspension expiry and account reactivation
+        handleAccountStatus(user);
 
         // Create session in Redis
         String sessionId = authRedisService.createSession(user.getUserId(), user.getUsername(), request);
@@ -464,6 +427,48 @@ public class UserService {
         resData.setMessage("Login Successful!");
 
         return resData;
+    }
+
+
+    // Handle suspension expiry and account reactivation
+    private void handleAccountStatus(Users user) {
+        boolean stateChanged = false;
+
+        // Suspended check
+        if (user.isStatusSuspend()) {
+            AccountSuspend suspension = accountSuspendRepo
+                .findTopByUserAndIsValidOrderBySuspendedAtDesc(user, true);
+
+            LocalDateTime now = LocalDateTime.now(ZONE_KOLKATA);
+
+            // Active suspension -> Block login
+            if (suspension != null && suspension.getSuspendedUntil().isAfter(now)) {
+                throw new IllegalArgumentException(
+                    "Your account is suspended until " + suspension.getSuspendedUntil()
+                    + ". Reason: " + suspension.getReason()
+                );
+            }
+
+            // Expired suspension -> Mark invalid
+            if (suspension != null) {
+                suspension.setValid(false);
+                accountSuspendRepo.save(suspension);
+            }
+
+            user.setStatusSuspend(false);
+            stateChanged = true;
+        }
+
+        // Auto-reactivate account if it was deactivated
+        if (user.isStatusDeleted()) {
+            user.setStatusDeleted(false);
+            stateChanged = true;
+        }
+
+        // Save only once if user status changed
+        if (stateChanged) {
+            usersRepo.save(user);
+        }
     }
 
 
