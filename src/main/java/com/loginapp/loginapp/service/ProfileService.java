@@ -135,7 +135,7 @@ public class ProfileService {
                         if(blockedbyme || blockedme){
                             res.setSearchUserTimeline(null);
                         }else{
-                            res.setSearchUserTimeline(timelineUser.getFullname());
+                            res.setSearchUserTimeline(timelineUser.getUsername() != null ? timelineUser.getUsername() : timelineUser.getFullname());
                         }
                     }
                     

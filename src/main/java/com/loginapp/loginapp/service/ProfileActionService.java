@@ -36,10 +36,14 @@ public class ProfileActionService {
     private final BlockRepo blockRepo;
 
     private final SecretCrushRepo secretCrushRepo;
-
     private final SecretCrushRequestRepo secretCrushRequestRepo;
+    private final NotificationService notificationService;
 
-    ProfileActionService(SecretCrushRequestRepo secretCrushRequestRepo, AuthUtils authUtils, UsersRepo usersRepo, FollowRepo followRepo, FollowRequestRepo followRequestRepo, BlockRepo blockRepo, SecretCrushRepo secretCrushRepo) {
+    ProfileActionService(SecretCrushRequestRepo secretCrushRequestRepo, AuthUtils authUtils,
+                         UsersRepo usersRepo, FollowRepo followRepo,
+                         FollowRequestRepo followRequestRepo, BlockRepo blockRepo,
+                         SecretCrushRepo secretCrushRepo,
+                         NotificationService notificationService) {
         this.secretCrushRequestRepo = secretCrushRequestRepo;
         this.authUtils = authUtils;
         this.usersRepo = usersRepo;
@@ -47,6 +51,7 @@ public class ProfileActionService {
         this.followRequestRepo = followRequestRepo;
         this.blockRepo = blockRepo;
         this.secretCrushRepo = secretCrushRepo;
+        this.notificationService = notificationService;
     }
 
     // 1. Follow User Logic..
@@ -84,6 +89,8 @@ public class ProfileActionService {
             req.setSenderId(userOne);
             req.setReceiverId(userTwo);
             followRequestRepo.save(req);
+
+            notificationService.sendFollowRequestNotification(userOne, userTwo);
             return;
         }
 
@@ -92,6 +99,8 @@ public class ProfileActionService {
         follow.setFollower(userOne);
         follow.setFollowing(userTwo);
         followRepo.save(follow);
+
+        notificationService.sendFollowNotification(userOne, userTwo);
     }
 
 
@@ -138,6 +147,7 @@ public class ProfileActionService {
                                 .orElseThrow(() -> new IllegalArgumentException("No request found!"));
 
         followRequestRepo.delete(req);
+        notificationService.removeFollowRequestNotification(userOne, userTwo);
     }
 
     /* Follow Request accept or reject */
@@ -178,6 +188,8 @@ public class ProfileActionService {
 
         // Delete the request
         followRequestRepo.delete(req);
+
+        notificationService.sendFollowAcceptNotification(userOne, userTwo);
     }
 
     // Reject Follow Request logic

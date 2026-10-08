@@ -53,4 +53,14 @@ public class RedisService {
             stringRedisTemplate.opsForValue().set(key, value);
         }
     }
+
+    // Atomic increment
+    public Long increment(String key) {
+        return stringRedisTemplate.opsForValue().increment(key);
+    }
+
+    // Atomic decrement
+    public Long decrement(String key) {
+        return stringRedisTemplate.opsForValue().decrement(key);
+    }
 }
