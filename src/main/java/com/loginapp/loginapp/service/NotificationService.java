@@ -62,11 +62,6 @@ public class NotificationService {
         if (recipientId == null || dto == null) return;
 
         try {
-            messagingTemplate.convertAndSendToUser(
-                recipientId.toString(),
-                "/queue/notifications",
-                dto
-            );
             messagingTemplate.convertAndSend(
                 "/topic/notifications." + recipientId,
                 dto
@@ -169,18 +164,21 @@ public class NotificationService {
         Users recipient = post.getUserpost();
 
         Optional<Notification> existingOpt = notificationRepo
-            .findFirstByRecipientAndTypeAndTargetIdAndIsReadFalse(
+            .findFirstByRecipientAndTypeAndTargetIdOrderByUpdatedAtDesc(
                 recipient, NotificationType.POST_LIKE, post.getPostId()
             );
 
         if (existingOpt.isPresent()) {
             Notification existing = existingOpt.get();
+            boolean wasUnread = !existing.isRead();
             if (existing.getAggregateCount() > 1) {
                 existing.setAggregateCount(existing.getAggregateCount() - 1);
                 notificationRepo.save(existing);
             } else {
                 notificationRepo.delete(existing);
-                decrementUnreadCount(recipient.getUserId());
+                if (wasUnread) {
+                    decrementUnreadCount(recipient.getUserId());
+                }
             }
         }
     }
@@ -243,6 +241,8 @@ public class NotificationService {
         if (actor.getUserId().equals(recipient.getUserId())) return;
         if (isBlocked(actor, recipient)) return;
 
+        notificationRepo.deleteByRecipientAndActorAndType(recipient, actor, NotificationType.USER_FOLLOW);
+
         Notification notification = new Notification();
         notification.setRecipient(recipient);
         notification.setActor(actor);
@@ -251,6 +251,15 @@ public class NotificationService {
 
         incrementUnreadCount(recipient);
         pushRealtimeNotification(recipient.getUserId(), toDTO(notification));
+    }
+
+    // *** Unfollow ***
+    @Async("notificationExecutor")
+    @Transactional
+    public void removeFollowNotification(Users actor, Users recipient) {
+        if (actor == null || recipient == null) return;
+        notificationRepo.deleteByRecipientAndActorAndType(recipient, actor, NotificationType.USER_FOLLOW);
+        decrementUnreadCount(recipient.getUserId());
     }
 
     // *** Follow Request ***

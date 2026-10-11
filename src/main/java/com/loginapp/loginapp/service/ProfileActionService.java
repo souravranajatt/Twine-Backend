@@ -124,6 +124,7 @@ public class ProfileActionService {
                             .orElseThrow(() -> new IllegalArgumentException("Not following!"));
 
         followRepo.delete(follow);
+        notificationService.removeFollowNotification(userOne, userTwo);
     }
 
 

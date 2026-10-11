@@ -22,6 +22,11 @@ public interface NotificationRepo extends JpaRepository<Notification, Long> {
         Users recipient, NotificationType type, Long targetId
     );
 
+    // Find any existing notification on post (for unlike cleanup regardless of read status)
+    Optional<Notification> findFirstByRecipientAndTypeAndTargetIdOrderByUpdatedAtDesc(
+        Users recipient, NotificationType type, Long targetId
+    );
+
     // Fetch notifications with actor and actor's userData eagerly fetched for high performance
     @Query("""
         SELECT n FROM Notification n

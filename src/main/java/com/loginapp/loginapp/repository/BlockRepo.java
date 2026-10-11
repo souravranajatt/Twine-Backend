@@ -28,4 +28,12 @@ public interface BlockRepo extends JpaRepository<BlockUser, Long> {
         WHERE b.blocker = :user OR b.blocked = :user
     """)
     Set<Long> findAllBlockedUserIds(@Param("user") Users user);
+
+    // Two-way block check between two specific users in a single query
+    @Query("""
+        SELECT COUNT(b) > 0 FROM BlockUser b 
+        WHERE (b.blocker = :user1 AND b.blocked = :user2) 
+           OR (b.blocker = :user2 AND b.blocked = :user1)
+    """)
+    boolean isBlockedBetween(@Param("user1") Users user1, @Param("user2") Users user2);
 }

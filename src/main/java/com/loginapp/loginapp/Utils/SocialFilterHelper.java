@@ -7,6 +7,7 @@ import com.loginapp.loginapp.DTO.TaggingResult;
 import com.loginapp.loginapp.entity.PostsEntity;
 import com.loginapp.loginapp.entity.Users;
 import com.loginapp.loginapp.repository.BlockRepo;
+import com.loginapp.loginapp.repository.FollowRepo;
 import com.loginapp.loginapp.repository.PostLikeRepo;
 import com.loginapp.loginapp.repository.PostRepo;
 import com.loginapp.loginapp.repository.SavedPostRepo;
@@ -17,13 +18,15 @@ import org.springframework.security.access.AccessDeniedException;
 public class SocialFilterHelper {
 
     private final BlockRepo blockRepo;
+    private final FollowRepo followRepo;
     private final PostLikeRepo postLikeRepo;
     private final SavedPostRepo savedPostRepo;
     private final UsersRepo usersRepo;
     private final PostRepo postRepo;
 
-    public SocialFilterHelper(BlockRepo blockRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, UsersRepo usersRepo, PostRepo postRepo) {
+    public SocialFilterHelper(BlockRepo blockRepo, FollowRepo followRepo, PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo, UsersRepo usersRepo, PostRepo postRepo) {
         this.blockRepo = blockRepo;
+        this.followRepo = followRepo;
         this.postLikeRepo = postLikeRepo;
         this.savedPostRepo = savedPostRepo;
         this.usersRepo = usersRepo;
@@ -127,6 +130,36 @@ public class SocialFilterHelper {
         if (user == null || post.getUserpost() == null || !post.getUserpost().getUserId().equals(user.getUserId())) {
             throw new AccessDeniedException("Invalid Actions");
         }
+        return post;
+    }
+
+    // Fetch active post and verify social accessibility (Block + Private Account follow check)
+    public PostsEntity validatePostAccessOrThrow(Long postId, Users loggedUser) {
+        PostsEntity post = getActivePostOrThrow(postId);
+        Users postOwner = post.getUserpost();
+
+        if (loggedUser == null || postOwner == null) {
+            return post;
+        }
+
+        // 1. Self-check (Zero DB calls)
+        if (postOwner.getUserId().equals(loggedUser.getUserId())) {
+            return post;
+        }
+
+        // 2. Two-way block check
+        if (blockRepo.isBlockedBetween(loggedUser, postOwner)) {
+            throw new AccessDeniedException("Action not allowed! User is blocked.");
+        }
+
+        // 3. Private account check
+        if (postOwner.isStatusPrivate()) {
+            boolean isFollowing = followRepo.existsByFollowerAndFollowing(loggedUser, postOwner);
+            if (!isFollowing) {
+                throw new AccessDeniedException("This account is private! Follow to interact.");
+            }
+        }
+
         return post;
     }
 }

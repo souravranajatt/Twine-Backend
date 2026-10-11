@@ -35,13 +35,15 @@ public class PostActionService {
     private final SavedPostRepo savedPostRepo;
     private final PostSeenRepo postSeenRepo;
     private final SocialFilterHelper socialFilterHelper;
+    private final NotificationService notificationService;
 
     private static final ZoneId ZONE_KOLKATA = ZoneId.of("Asia/Kolkata");
 
     PostActionService(AuthUtils authUtils, AffinityService affinityService, PostRepo postRepo,
                       PostLikeRepo postLikeRepo, SavedPostRepo savedPostRepo,
                       PostSeenRepo postSeenRepo, PostCommentRepo postCommentRepo,
-                      SocialFilterHelper socialFilterHelper) {
+                      SocialFilterHelper socialFilterHelper,
+                      NotificationService notificationService) {
         this.authUtils = authUtils;
         this.affinityService = affinityService;
         this.postRepo = postRepo;
@@ -50,12 +52,13 @@ public class PostActionService {
         this.postSeenRepo = postSeenRepo;
         this.postCommentRepo = postCommentRepo;
         this.socialFilterHelper = socialFilterHelper;
+        this.notificationService = notificationService;
     }
 
     // Like a Post
     public void likePost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
+        PostsEntity post = socialFilterHelper.validatePostAccessOrThrow(postId, loggedUser);
 
         boolean alreadyLiked = postLikeRepo.existsByPostAndUser(post, loggedUser);
         if (alreadyLiked) {
@@ -70,6 +73,7 @@ public class PostActionService {
         postRepo.incrementLikeCount(postId);
 
         affinityService.updateAffinityOnLike(loggedUser, post);
+        notificationService.sendPostLikeNotification(loggedUser, post);
     }
 
     // Unlike a Post
@@ -85,6 +89,7 @@ public class PostActionService {
             postRepo.decrementLikeCount(postId);
 
             affinityService.updateAffinityOnUnlike(loggedUser, post);
+            notificationService.removePostLikeNotification(loggedUser, post);
         } else {
             throw new IllegalArgumentException("Something went wrong!");
         }
@@ -93,7 +98,7 @@ public class PostActionService {
     // Save a Post
     public void savePost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
+        PostsEntity post = socialFilterHelper.validatePostAccessOrThrow(postId, loggedUser);
 
         boolean alreadySaved = savedPostRepo.existsByUserAndPost(loggedUser, post);
         if (alreadySaved) {
@@ -131,7 +136,7 @@ public class PostActionService {
     // View a Post 
     public void viewPost(Long postId) {
         Users loggedUser = authUtils.getLoggedUser();
-        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
+        PostsEntity post = socialFilterHelper.validatePostAccessOrThrow(postId, loggedUser);
 
         PostSeen existingSeen = postSeenRepo.findByPostAndUser(post, loggedUser);
         LocalDateTime now = LocalDateTime.now(ZONE_KOLKATA);
@@ -158,7 +163,7 @@ public class PostActionService {
     // Comment a Post 
     public void commentPost(Long postId, PostCommentDTO commentDTO) {
         Users loggedUser = authUtils.getLoggedUser();
-        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
+        PostsEntity post = socialFilterHelper.validatePostAccessOrThrow(postId, loggedUser);
 
         if (!post.getCommentEnabled()) {
             throw new AccessDeniedException("Invalid Actions!");
@@ -200,16 +205,19 @@ public class PostActionService {
 
         // Update user affinity score for comment!
         affinityService.updateAffinityOnComment(loggedUser, post);
+
+        // Send notification
+        if (newComment.getParentId() != null) {
+            notificationService.sendReplyNotification(loggedUser, newComment.getParentId(), commentDTO.getCommentText());
+        } else {
+            notificationService.sendCommentNotification(loggedUser, post, commentDTO.getCommentText());
+        }
     } 
 
     // Archive a post
     public void archivePost(Long postId){
         Users loggedUser = authUtils.getLoggedUser();
         PostsEntity post = socialFilterHelper.getOwnedPostOrThrow(postId, loggedUser);
-
-        if (!post.getPostVisiblity()) {
-            throw new IllegalArgumentException("Post already archived!");
-        }
 
         post.setPostVisiblity(false);
         postRepo.save(post);
@@ -222,10 +230,6 @@ public class PostActionService {
         PostsEntity post = postRepo.findArchivedPostById(postId, loggedUser);
         if (post == null) {
             throw new IllegalArgumentException("Post no longer available!");
-        }
-
-        if (post.getPostVisiblity()) {
-            throw new IllegalArgumentException("Post already unarchived!");
         }
 
         post.setPostVisiblity(true);

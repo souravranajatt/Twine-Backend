@@ -38,6 +38,8 @@ public class PostActionController {
             return ResponseEntity.ok("Liked!");
         }catch(IllegalArgumentException e){
             return ResponseEntity.badRequest().body(e.getMessage());
+        }catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
         }catch(Exception e){
             return ResponseEntity.status(500).body("An error occurred while liking the post.");
         }
@@ -66,6 +68,8 @@ public class PostActionController {
             return ResponseEntity.ok("Saved!");
         }catch(IllegalArgumentException e){
             return ResponseEntity.badRequest().body(e.getMessage());
+        }catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
         }catch(Exception e){
             return ResponseEntity.status(500).body("An error occurred while saving the post.");
         }
@@ -94,6 +98,8 @@ public class PostActionController {
             return ResponseEntity.ok("Viewed!");
         }catch(IllegalArgumentException e){
             return ResponseEntity.badRequest().body(e.getMessage());
+        }catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
         }catch(Exception e){
             return ResponseEntity.status(500).body("An error occurred while updating the view count.");
         }
