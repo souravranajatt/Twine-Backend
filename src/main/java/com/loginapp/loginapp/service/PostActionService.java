@@ -188,6 +188,10 @@ public class PostActionService {
                 PostComment parentComment = postCommentRepo.findById(parentid)
                     .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
 
+                if (Boolean.TRUE.equals(parentComment.getIsDeleted())) {
+                    throw new IllegalArgumentException("Cannot reply to a deleted comment!");
+                }
+
                 // Verify parent comment belongs to the same post
                 if (!parentComment.getPost().getPostId().equals(post.getPostId())) {
                     throw new IllegalArgumentException("Invalid parent comment!");
@@ -213,6 +217,57 @@ public class PostActionService {
             notificationService.sendCommentNotification(loggedUser, post, commentDTO.getCommentText());
         }
     } 
+
+    // Delete a Comment
+    public void deleteComment(Long postId, Long commentId) {
+        Users loggedUser = authUtils.getLoggedUser();
+        PostsEntity post = socialFilterHelper.getActivePostOrThrow(postId);
+
+        PostComment comment = postCommentRepo.findById(commentId)
+            .orElseThrow(() -> new IllegalArgumentException("Comment not found!"));
+
+        if (Boolean.TRUE.equals(comment.getIsDeleted())) {
+            throw new IllegalArgumentException("Comment already deleted!");
+        }
+
+        // Verify comment belongs to the target post
+        if (!comment.getPost().getPostId().equals(post.getPostId())) {
+            throw new IllegalArgumentException("Comment does not belong to this post!");
+        }
+
+        // Authorization check: Only comment author OR post owner can delete
+        boolean isCommentAuthor = comment.getUser().getUserId().equals(loggedUser.getUserId());
+        boolean isPostOwner = post.getUserpost() != null 
+            && post.getUserpost().getUserId().equals(loggedUser.getUserId());
+
+        if (!isCommentAuthor && !isPostOwner) {
+            throw new AccessDeniedException("You are not authorized to delete this comment!");
+        }
+
+        comment.setIsDeleted(true);
+        postCommentRepo.save(comment);
+
+        // Case 1: If it was a reply to another comment
+        if (comment.getParentId() != null) {
+            postCommentRepo.decrementReplyCount(comment.getParentId().getCommentId());
+            postRepo.decrementCommentCount(postId);
+
+            Users replyRecipient = comment.getParentId().getUser();
+            notificationService.removeReplyNotification(comment.getUser(), replyRecipient, postId);
+        } else {
+            // Case 2: Top-level comment
+            // Soft-delete any active replies under this comment so orphan replies don't remain
+            int deletedReplies = postCommentRepo.softDeleteRepliesByParent(comment);
+            long totalDecrements = 1L + deletedReplies;
+            postRepo.decrementCommentCountBy(postId, totalDecrements);
+
+            Users postOwner = post.getUserpost();
+            notificationService.removeCommentNotification(comment.getUser(), postOwner, postId);
+
+            // Purge all reply notifications that this comment's author received on this post
+            notificationService.purgeAllReplyNotificationsForComment(comment.getUser(), postId);
+        }
+    }
 
     // Archive a post
     public void archivePost(Long postId){

@@ -233,6 +233,75 @@ public class NotificationService {
         pushRealtimeNotification(recipient.getUserId(), toDTO(notification));
     }
 
+    // *** Remove Post Comment Notification ***
+    @Async("notificationExecutor")
+    @Transactional
+    public void removeCommentNotification(Users actor, Users recipient, Long postId) {
+        if (actor == null || recipient == null || postId == null) return;
+        if (actor.getUserId().equals(recipient.getUserId())) return;
+
+        Optional<Notification> existingOpt = notificationRepo
+            .findFirstByRecipientAndActorAndTypeAndTargetIdOrderByUpdatedAtDesc(
+                recipient, actor, NotificationType.POST_COMMENT, postId
+            );
+
+        if (existingOpt.isPresent()) {
+            Notification existing = existingOpt.get();
+            boolean wasUnread = !existing.isRead();
+            notificationRepo.delete(existing);
+            if (wasUnread) {
+                decrementUnreadCount(recipient.getUserId());
+            }
+        }
+    }
+
+    // *** Remove Comment Reply Notification ***
+    @Async("notificationExecutor")
+    @Transactional
+    public void removeReplyNotification(Users actor, Users recipient, Long postId) {
+        if (actor == null || recipient == null || postId == null) return;
+        if (actor.getUserId().equals(recipient.getUserId())) return;
+
+        Optional<Notification> existingOpt = notificationRepo
+            .findFirstByRecipientAndActorAndTypeAndTargetIdOrderByUpdatedAtDesc(
+                recipient, actor, NotificationType.COMMENT_REPLY, postId
+            );
+
+        if (existingOpt.isPresent()) {
+            Notification existing = existingOpt.get();
+            boolean wasUnread = !existing.isRead();
+            notificationRepo.delete(existing);
+            if (wasUnread) {
+                decrementUnreadCount(recipient.getUserId());
+            }
+        }
+    }
+
+    // *** Purge All Reply Notifications for a Parent Comment ***
+    @Async("notificationExecutor")
+    @Transactional
+    public void purgeAllReplyNotificationsForComment(Users commentAuthor, Long postId) {
+        if (commentAuthor == null || postId == null) return;
+
+        List<Notification> repliesNotifs = notificationRepo.findByRecipientAndTypeAndTargetId(
+            commentAuthor, NotificationType.COMMENT_REPLY, postId
+        );
+
+        if (repliesNotifs == null || repliesNotifs.isEmpty()) return;
+
+        long unreadCount = repliesNotifs.stream().filter(n -> !n.isRead()).count();
+
+        notificationRepo.deleteAll(repliesNotifs);
+
+        if (unreadCount > 0) {
+            String key = REDIS_UNREAD_PREFIX + commentAuthor.getUserId();
+            if (redisService.hasKey(key)) {
+                long currentCount = notificationRepo.countUnreadByRecipient(commentAuthor);
+                redisService.setValueWithExpiry(key, String.valueOf(currentCount), 3600);
+            }
+        }
+    }
+
     // *** Follow ***
     @Async("notificationExecutor")
     @Transactional

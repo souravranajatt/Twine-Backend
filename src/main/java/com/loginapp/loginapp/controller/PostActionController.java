@@ -121,6 +121,21 @@ public class PostActionController {
         }
     }
 
+    // Delete a comment
+    @DeleteMapping("/{postId}/comment/{commentId}")
+    public ResponseEntity<?> deleteComment(@PathVariable Long postId, @PathVariable Long commentId) {
+        try {
+            postActionService.deleteComment(postId, commentId);
+            return ResponseEntity.ok("Comment deleted successfully!");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("An error occurred while deleting the comment.");
+        }
+    }
+
     // Archive a post
     @PatchMapping("/{postId}/archive")
     public ResponseEntity<?> archivePost(@PathVariable Long postId) {

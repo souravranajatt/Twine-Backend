@@ -47,4 +47,9 @@ public interface PostCommentRepo extends JpaRepository<PostComment, Long> {
     @Modifying
     @Query("UPDATE PostComment c SET c.replyCount = CASE WHEN c.replyCount > 0 THEN c.replyCount - 1 ELSE 0 END WHERE c.commentId = :commentId")
     void decrementReplyCount(@Param("commentId") Long commentId);
+
+    // Soft delete all active replies of a parent comment
+    @Modifying
+    @Query("UPDATE PostComment c SET c.isDeleted = true WHERE c.parentId = :parent AND c.isDeleted = false")
+    int softDeleteRepliesByParent(@Param("parent") PostComment parent);
 }
