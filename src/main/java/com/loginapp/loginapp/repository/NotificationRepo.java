@@ -27,6 +27,11 @@ public interface NotificationRepo extends JpaRepository<Notification, Long> {
         Users recipient, NotificationType type, Long targetId
     );
 
+    // Find any existing notification by recipient, actor and type (for unfollow / follow request cancel)
+    Optional<Notification> findFirstByRecipientAndActorAndTypeOrderByUpdatedAtDesc(
+        Users recipient, Users actor, NotificationType type
+    );
+
     // Find any existing notification by recipient, actor, type and targetId (for comment/reply delete cleanup)
     Optional<Notification> findFirstByRecipientAndActorAndTypeAndTargetIdOrderByUpdatedAtDesc(
         Users recipient, Users actor, NotificationType type, Long targetId

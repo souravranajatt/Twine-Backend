@@ -218,6 +218,9 @@ public class ProfileActionService {
 
         // Delete the request
         followRequestRepo.delete(req);
+
+        // Remove the pending follow request notification from receiver's feed
+        notificationService.removeFollowRequestNotification(userTwo, userOne);
     }
 
 

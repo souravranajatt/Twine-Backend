@@ -73,6 +73,15 @@ public class NotificationService {
         pushSseNotification(recipientId, dto);
     }
 
+    // *** Push Realtime Notification Removal ***
+    private void pushRealtimeRemove(Long recipientId, Long notificationId) {
+        if (recipientId == null || notificationId == null) return;
+        NotificationDTO dto = new NotificationDTO();
+        dto.setType("NOTIFICATION_REMOVE");
+        dto.setNotificationId(String.valueOf(notificationId));
+        pushRealtimeNotification(recipientId, dto);
+    }
+
     // *** SSE Subscribe ***
     public SseEmitter subscribe(Long userId) {
         SseEmitter emitter = new SseEmitter(30 * 60 * 1000L); // 30 min timeout
@@ -173,12 +182,15 @@ public class NotificationService {
             boolean wasUnread = !existing.isRead();
             if (existing.getAggregateCount() > 1) {
                 existing.setAggregateCount(existing.getAggregateCount() - 1);
-                notificationRepo.save(existing);
+                Notification saved = notificationRepo.save(existing);
+                pushRealtimeNotification(recipient.getUserId(), toDTO(saved));
             } else {
+                Long notifId = existing.getNotificationId();
                 notificationRepo.delete(existing);
                 if (wasUnread) {
                     decrementUnreadCount(recipient.getUserId());
                 }
+                pushRealtimeRemove(recipient.getUserId(), notifId);
             }
         }
     }
@@ -248,10 +260,12 @@ public class NotificationService {
         if (existingOpt.isPresent()) {
             Notification existing = existingOpt.get();
             boolean wasUnread = !existing.isRead();
+            Long notifId = existing.getNotificationId();
             notificationRepo.delete(existing);
             if (wasUnread) {
                 decrementUnreadCount(recipient.getUserId());
             }
+            pushRealtimeRemove(recipient.getUserId(), notifId);
         }
     }
 
@@ -270,10 +284,12 @@ public class NotificationService {
         if (existingOpt.isPresent()) {
             Notification existing = existingOpt.get();
             boolean wasUnread = !existing.isRead();
+            Long notifId = existing.getNotificationId();
             notificationRepo.delete(existing);
             if (wasUnread) {
                 decrementUnreadCount(recipient.getUserId());
             }
+            pushRealtimeRemove(recipient.getUserId(), notifId);
         }
     }
 
@@ -290,6 +306,10 @@ public class NotificationService {
         if (repliesNotifs == null || repliesNotifs.isEmpty()) return;
 
         long unreadCount = repliesNotifs.stream().filter(n -> !n.isRead()).count();
+
+        for (Notification n : repliesNotifs) {
+            pushRealtimeRemove(commentAuthor.getUserId(), n.getNotificationId());
+        }
 
         notificationRepo.deleteAll(repliesNotifs);
 
@@ -327,8 +347,24 @@ public class NotificationService {
     @Transactional
     public void removeFollowNotification(Users actor, Users recipient) {
         if (actor == null || recipient == null) return;
-        notificationRepo.deleteByRecipientAndActorAndType(recipient, actor, NotificationType.USER_FOLLOW);
-        decrementUnreadCount(recipient.getUserId());
+
+        Optional<Notification> existingOpt = notificationRepo
+            .findFirstByRecipientAndActorAndTypeOrderByUpdatedAtDesc(
+                recipient, actor, NotificationType.USER_FOLLOW
+            );
+
+        if (existingOpt.isPresent()) {
+            Notification existing = existingOpt.get();
+            boolean wasUnread = !existing.isRead();
+            Long notifId = existing.getNotificationId();
+            notificationRepo.delete(existing);
+            if (wasUnread) {
+                decrementUnreadCount(recipient.getUserId());
+            }
+            pushRealtimeRemove(recipient.getUserId(), notifId);
+        } else {
+            notificationRepo.deleteByRecipientAndActorAndType(recipient, actor, NotificationType.USER_FOLLOW);
+        }
     }
 
     // *** Follow Request ***
@@ -354,8 +390,24 @@ public class NotificationService {
     @Transactional
     public void removeFollowRequestNotification(Users actor, Users recipient) {
         if (actor == null || recipient == null) return;
-        notificationRepo.deleteByRecipientAndActorAndType(recipient, actor, NotificationType.FOLLOW_REQUEST);
-        decrementUnreadCount(recipient.getUserId());
+
+        Optional<Notification> existingOpt = notificationRepo
+            .findFirstByRecipientAndActorAndTypeOrderByUpdatedAtDesc(
+                recipient, actor, NotificationType.FOLLOW_REQUEST
+            );
+
+        if (existingOpt.isPresent()) {
+            Notification existing = existingOpt.get();
+            boolean wasUnread = !existing.isRead();
+            Long notifId = existing.getNotificationId();
+            notificationRepo.delete(existing);
+            if (wasUnread) {
+                decrementUnreadCount(recipient.getUserId());
+            }
+            pushRealtimeRemove(recipient.getUserId(), notifId);
+        } else {
+            notificationRepo.deleteByRecipientAndActorAndType(recipient, actor, NotificationType.FOLLOW_REQUEST);
+        }
     }
 
     // *** Follow Request Accept ***
@@ -374,29 +426,6 @@ public class NotificationService {
 
         incrementUnreadCount(recipient);
         pushRealtimeNotification(recipient.getUserId(), toDTO(notification));
-    }
-
-    // *** Secret Crush Match ***
-    @Async("notificationExecutor")
-    @Transactional
-    public void sendSecretCrushMatchNotification(Users userOne, Users userTwo) {
-        if (userOne == null || userTwo == null) return;
-
-        Notification notifOne = new Notification();
-        notifOne.setRecipient(userOne);
-        notifOne.setActor(userTwo);
-        notifOne.setType(NotificationType.SECRET_CRUSH_MATCH);
-        notificationRepo.save(notifOne);
-        incrementUnreadCount(userOne);
-        pushRealtimeNotification(userOne.getUserId(), toDTO(notifOne));
-
-        Notification notifTwo = new Notification();
-        notifTwo.setRecipient(userTwo);
-        notifTwo.setActor(userOne);
-        notifTwo.setType(NotificationType.SECRET_CRUSH_MATCH);
-        notificationRepo.save(notifTwo);
-        incrementUnreadCount(userTwo);
-        pushRealtimeNotification(userTwo.getUserId(), toDTO(notifTwo));
     }
 
 
